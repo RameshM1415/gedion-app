@@ -5,9 +5,9 @@ export const SUPABASE_URL = "https://aifktpstbquzfloleleb.supabase.co";
 export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpZmt0cHN0YnF1emZsb2xlbGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzA0NTksImV4cCI6MjA5NzIwNjQ1OX0.DVlA_himyLQRi1piTDjQYRnhAo766AsG7MVTP0txQyc";
 export const STORAGE_BUCKET = 'reels';
 
-export const CLOUDINARY_CLOUD_NAME = 'ukcqbuxcx';
+export const CLOUDINARY_CLOUD_NAME = 'ulcqbucx';
 export const CLOUDINARY_UPLOAD_PRESET = 'gedion_preset';
-export const CLOUDINARY_UPLOAD_ENDPOINT = 'https://api.cloudinary.com/v1_1/ukcqbuxcx/video/upload';
+export const CLOUDINARY_UPLOAD_ENDPOINT = 'https://api.cloudinary.com/v1_1/ulcqbucx/video/upload';
 
 export const LIKED_REELS_STORAGE_KEY = 'gedion_liked_reels_v1';
 
