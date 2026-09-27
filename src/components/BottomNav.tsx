@@ -72,7 +72,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 44, transition: { duration: 0.2, ease: 'easeIn' } }}
           transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute bottom-0 left-0 right-0 z-30 flex justify-center pb-3 pt-1 px-4 pointer-events-none"
+          className="absolute bottom-3 pb-[env(safe-area-inset-bottom)] left-0 right-0 z-30 flex justify-center pb-3 pt-1 px-4 pointer-events-none"
         >
           <div className="pointer-events-auto flex items-center justify-between w-full max-w-[420px] rounded-full px-5 py-2 glass-panel border border-white/10 shadow-[0_10px_35px_rgba(0,0,0,0.8)]">
             {/* Home / Reels */}
