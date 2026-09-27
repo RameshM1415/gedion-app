@@ -726,7 +726,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         required
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Ramesh Rao"
+                        placeholder="Enter your name"
                         className="w-full bg-transparent text-xs text-white placeholder-white/30 focus:outline-none"
                       />
                     </div>
@@ -742,7 +742,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="rameshrao034@gmail.com"
+                        placeholder="name@example.com"
                         className="w-full bg-transparent text-xs text-white placeholder-white/30 focus:outline-none"
                       />
                     </div>
@@ -1155,30 +1155,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               {/* Account list */}
               <div className="mt-3 space-y-2">
-                {/* Active Primary Account */}
-                <button
-                  type="button"
-                  onClick={() => handleSelectGoogleAccount(DEFAULT_AUTH_USER)}
-                  className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/[0.05] hover:bg-white/10 border border-white/10 active:scale-98 transition-all text-left cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={DEFAULT_AUTH_USER.avatar}
-                      alt="Ramesh Rao"
-                      className="h-10 w-10 rounded-full object-cover border border-cyan-400"
-                    />
-                    <div>
-                      <p className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">
-                        {DEFAULT_AUTH_USER.displayName}
-                      </p>
-                      <p className="text-[11px] text-white/50">{DEFAULT_AUTH_USER.email}</p>
-                    </div>
-                  </div>
-                  <div className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold border border-cyan-400/40">
-                    Device
-                  </div>
-                </button>
-
+                
                 {/* Use Another Account */}
                 <button
                   type="button"
