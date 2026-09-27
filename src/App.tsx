@@ -330,7 +330,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="relative flex h-screen w-screen items-center justify-center bg-[#020204] overflow-hidden">
+    <div className="relative flex h-[100dvh] w-screen items-center justify-center bg-[#020204] overflow-hidden">
       {/* Initial App Launch / Splash Screen with Ambient Neon Glow Pulse */}
       <AnimatePresence>
         {showSplash && (
@@ -343,7 +343,7 @@ export const App: React.FC = () => {
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-cyan-600/15 blur-[120px]" />
 
       {/* Mobile-first viewport container (9:16 aspect ratio framing with elegant bezel on desktop) */}
-      <main className="relative flex flex-col h-full w-full max-w-[440px] md:h-[94vh] md:max-h-[890px] md:rounded-[36px] overflow-hidden bg-black shadow-[0_0_60px_-10px_rgba(168,85,247,0.3)] md:border md:border-white/15">
+      <main className="relative flex flex-col h-[100dvh] max-h-[100dvh] w-full max-w-[440px] md:h-[94vh] md:max-h-[890px] md:rounded-[36px] overflow-hidden bg-black shadow-[0_0_60px_-10px_rgba(168,85,247,0.3)] md:border md:border-white/15">
         {/* Top Header with Refresh Indicator & Account/Auth Launcher */}
         <TopHeader
           currentFeedTab={feedTab}
