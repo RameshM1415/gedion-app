@@ -416,7 +416,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
       const xhr = new XMLHttpRequest();
       activeXhrRef.current = xhr;
 
-      xhr.open('POST', 'https://api.cloudinary.com/v1_1/ukcqbuxcx/video/upload', true);
+      xhr.open('POST', 'https://api.cloudinary.com/v1_1/ulcqbucx/video/upload', true);
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -1126,7 +1126,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                   </div>
 
                   <p className="text-[10px] text-white/50 text-center font-mono">
-                    Cloudinary CDN (ukcqbuxcx) • Auto-Optimizing q_auto,f_auto,w_720,c_limit
+                    Cloudinary CDN (ulcqbucx) • Auto-Optimizing q_auto,f_auto,w_720,c_limit
                   </p>
                 </div>
               ) : (
