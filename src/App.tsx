@@ -248,7 +248,13 @@ export const App: React.FC = () => {
 
     setReels((prev) => {
       const filtered = prev.filter((r) => r.id !== enrichedReel.id);
-      return [enrichedReel, ...filtered];
+      const updated = [enrichedReel, ...filtered];
+      try {
+        localStorage.setItem('gedion_custom_reels', JSON.stringify(updated.filter(r => !r.id.startsWith('mock_'))));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
     });
     setFeedTab('forYou');
     setNavTab('home');
