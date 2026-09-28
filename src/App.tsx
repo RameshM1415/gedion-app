@@ -205,7 +205,11 @@ export const App: React.FC = () => {
 
   // Cloud Reels Handlers (Fetch & Realtime strictly from Supabase 'posts')
   const handleReelsLoaded = useCallback((loadedReels: Reel[]) => {
-    setReels(Array.isArray(loadedReels) ? loadedReels : []);
+    setReels((prev) => {
+      const cloud = Array.isArray(loadedReels) ? loadedReels : [];
+      const customReels = prev.filter((r) => !cloud.some((c) => c.id === r.id));
+      return [...customReels, ...cloud];
+    });
   }, []);
 
   const handleNewRealtimeReel = useCallback((newReel: Reel) => {
