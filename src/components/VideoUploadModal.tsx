@@ -594,6 +594,12 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
         setIsSubmitting(false);
         setUploadProgress(0);
         setUploadStatus('');
+        try {
+          const existingLocal = JSON.parse(localStorage.getItem('gedion_custom_reels') || '[]');
+          localStorage.setItem('gedion_custom_reels', JSON.stringify([newReel, ...existingLocal]));
+        } catch (e) {
+          console.error(e);
+        }
         onPublish(newReel);
         onClose();
       }, 350);
