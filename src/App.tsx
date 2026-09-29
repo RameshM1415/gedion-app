@@ -26,9 +26,22 @@ import {
   DEFAULT_AUTH_USER,
 } from './utils/authStorage';
 
-const LOCAL_REELS_STORAGE_KEY = 'gedion_local_reels_v2';
+const LOCAL_REELS_STORAGE_KEY = 'gedion_custom_reels';
 
 const getInitialReels = (): Reel[] => {
+  try {
+    const saved = localStorage.getItem('gedion_custom_reels') || localStorage.getItem('gedion_local_reels_v2');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const customIds = new Set(parsed.map((r: Reel) => r.id));
+        const remainingInitials = INITIAL_REELS.filter(r => !customIds.has(r.id));
+        return [...parsed, ...remainingInitials];
+      }
+    }
+  } catch (e) {
+    console.error('Failed to parse cached reels', e);
+  }
   return INITIAL_REELS;
 };
 
