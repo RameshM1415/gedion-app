@@ -128,7 +128,7 @@ export const deriveUserFromEmail = (email: string, provider: 'google' | 'email_o
   const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${avatarSeed}&backgroundColor=06b6d4,a855f7`;
 
   return {
-    id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    id: `usr_${cleanUsername.replace(/[^a-zA-Z0-9]/g, '_')}`,
     email: cleanEmail,
     displayName: formattedName,
     username: cleanUsername,
