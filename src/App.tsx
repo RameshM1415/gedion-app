@@ -203,12 +203,14 @@ export const App: React.FC = () => {
   };
 
   // Feature 1: Home Button Double-Tap to Refresh & Scroll-to-Top (Live Supabase 'posts' query)
-  const handleHomeRefresh = async () => {
+    const handleHomeRefresh = async () => {
     setIsRefreshing(true);
     setScrollToTopTrigger((prev) => prev + 1);
     try {
       const cloudReels = await fetchSupabaseReels();
-      setReels(cloudReels);
+      if (Array.isArray(cloudReels)) {
+        handleReelsLoaded(cloudReels);
+      }
     } catch (err) {
       console.warn('Error refreshing posts from Supabase:', err);
     } finally {
@@ -216,12 +218,22 @@ export const App: React.FC = () => {
     }
   };
 
-  // Cloud Reels Handlers (Fetch & Realtime strictly from Supabase 'posts')
+  // Cloud Reels Handlers
   const handleReelsLoaded = useCallback((loadedReels: Reel[]) => {
     setReels((prev) => {
+      let localCustom: Reel[] = [];
+      try {
+        const raw = localStorage.getItem('gedion_custom_reels');
+        if (raw) localCustom = JSON.parse(raw);
+      } catch (e) {
+        console.error(e);
+      }
+
       const cloud = Array.isArray(loadedReels) ? loadedReels : [];
-      const customReels = prev.filter((r) => !cloud.some((c) => c.id === r.id));
-      return [...customReels, ...cloud];
+      const combined = [...localCustom, ...prev.filter(r => !r.id.startsWith('mock_'))];
+      const uniqueLocal = combined.filter((r, idx, arr) => arr.findIndex(x => x.id === r.id) === idx);
+      const remainingCloud = cloud.filter((c) => !uniqueLocal.some((u) => u.id === c.id));
+      return [...uniqueLocal, ...remainingCloud];
     });
   }, []);
 
