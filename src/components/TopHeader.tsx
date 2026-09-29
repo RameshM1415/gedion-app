@@ -107,31 +107,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
       {/* Right Tools: Account / Auth Button & Activity/Notifications button */}
       <div className="flex items-center gap-2">
-        {onOpenAuth && (
-          <button
-            type="button"
-            onClick={onOpenAuth}
-            aria-label="Account and Authentication"
-            title={currentUser ? `Signed in as @${currentUser.username}` : 'Sign In to GediOn'}
-            style={{
-              boxShadow: '0 0 14px rgba(6, 182, 212, 0.45)',
-            }}
-            className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full bg-gradient-to-tr from-cyan-950/70 via-black/80 to-purple-950/70 backdrop-blur-md border border-cyan-400/70 text-cyan-300 hover:text-white transition-all active:scale-95 group overflow-hidden"
-          >
-            {currentUser?.avatar ? (
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.displayName}
-                className="h-full w-full object-cover transition-transform group-hover:scale-110"
-              />
-            ) : (
-              <User
-                size={18}
-                className="text-cyan-300 transition-transform group-hover:scale-110 drop-shadow-[0_0_6px_rgba(6,182,212,0.9)]"
-              />
-            )}
-          </button>
-        )}
 
         <button
           onClick={onOpenActivity}
@@ -153,7 +128,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           )}
         </button>
       </div>
-    </div>
   );
 };
 
