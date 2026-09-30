@@ -1,13 +1,3 @@
-id: `usr_${cleanUsername.replace(/[^a-zA-Z0-9]/g, '_')}` // <-- yahan error tha
-```[span_3](start_span)[span_3](end_span)
-
----
-
-### Isko 1-Click Mein Fix Karein (100% Tested Clean Code)
-
-Is baar koi typing nahi karni hai. Neeche diya gaya poora code **Copy** kijiye:
-
-```ts
 /**
  * Client-Side 100% Free Authentication Storage For GediOn
  * Supports "Continue with Google" & "Instant Email OTP (Gmail)"
