@@ -4,6 +4,11 @@ import { Sparkles, Download, X } from 'lucide-react';
 import { INITIAL_REELS } from './data/mockReels';
 import { Reel, FeedTab, NavTab } from './types';
 import { TopHeader } from './components/TopHeader';
+import { StoriesTray } from './components/StoriesTray';
+import { StoryPreviewModal } from './components/StoryPreviewModal';
+import { AddStoryModal } from './components/AddStoryModal';
+import { MOCK_STORIES } from './data/mockStories';
+import { StoryItem } from './types';
 import { BottomNav } from './components/BottomNav';
 import { ReelsFeed } from './components/ReelsFeed';
 import { CommentDrawer } from './components/CommentDrawer';
@@ -27,6 +32,22 @@ import {
 } from './utils/authStorage';
 
 const LOCAL_REELS_STORAGE_KEY = 'gedion_custom_reels';
+const LOCAL_STORIES_STORAGE_KEY = 'gedion_user_stories';
+
+const getInitialStories = (): StoryItem[] => {
+  try {
+    const saved = localStorage.getItem(LOCAL_STORIES_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return [...parsed, ...MOCK_STORIES];
+      }
+    }
+  } catch (e) {
+    console.error('Failed to parse cached stories', e);
+  }
+  return MOCK_STORIES;
+};
 
 const getInitialReels = (): Reel[] => {
   try {
@@ -64,6 +85,37 @@ export const App: React.FC = () => {
   const [authPromptMessage, setAuthPromptMessage] = useState<string | undefined>(undefined);
   const [isOnboardingVideoOpen, setIsOnboardingVideoOpen] = useState(false);
   const [authToast, setAuthToast] = useState<string | null>(null);
+
+  // Stories Feature State (Status Bar & Preview / Add)
+  const [stories, setStories] = useState<StoryItem[]>(getInitialStories);
+  const [selectedStoryIndex, setSelectedStoryIndex] = useState<number>(0);
+  const [isStoryPreviewOpen, setIsStoryPreviewOpen] = useState<boolean>(false);
+  const [isAddStoryOpen, setIsAddStoryOpen] = useState<boolean>(false);
+  const [storyToast, setStoryToast] = useState<string | null>(null);
+
+  const handleSelectStory = (index: number) => {
+    setSelectedStoryIndex(index);
+    setIsStoryPreviewOpen(true);
+  };
+
+  const handleOpenAddStory = () => {
+    setIsAddStoryOpen(true);
+  };
+
+  const handlePublishStory = (newStory: StoryItem) => {
+    setStories((prev) => {
+      const updated = [newStory, ...prev];
+      try {
+        const userCreated = updated.filter((s) => s.id.startsWith('story_'));
+        localStorage.setItem(LOCAL_STORIES_STORAGE_KEY, JSON.stringify(userCreated));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
+    setStoryToast('🎉 Story published live to GediOn Status!');
+    setTimeout(() => setStoryToast(null), 3500);
+  };
 
   // 2. Auth State Listener on App Launch
   useEffect(() => {
@@ -379,16 +431,30 @@ export const App: React.FC = () => {
 
       {/* Mobile-first viewport container (9:16 aspect ratio framing with elegant bezel on desktop) */}
       <main className="relative flex flex-col h-[100dvh] max-h-[100dvh] w-full max-w-[440px] md:h-[94vh] md:max-h-[890px] md:rounded-[36px] overflow-hidden bg-black shadow-[0_0_60px_-10px_rgba(168,85,247,0.3)] md:border md:border-white/15">
-        {/* Top Header with Refresh Indicator & Account/Auth Launcher */}
+        {/* Top Header with Refresh Indicator & Notifications Launcher */}
         <TopHeader
           currentFeedTab={feedTab}
           onSelectFeedTab={(tab) => setFeedTab(tab)}
           onOpenActivity={() => setNavTab('activity')}
+          onOpenNotifications={() => setNavTab('activity')}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           currentUser={currentUser}
           hasUnreadNotifications={false}
           isRefreshing={isRefreshing}
         />
+
+        {/* Stories / Status Bar Component at the Top (Below TopHeader) */}
+        {navTab === 'home' && (
+          <div className="relative z-30 w-full px-1.5 py-1 bg-gradient-to-b from-black/75 via-black/40 to-transparent backdrop-blur-[1px]">
+            <StoriesTray
+              stories={stories}
+              onOpenYourStory={handleOpenAddStory}
+              onSelectStory={handleSelectStory}
+              userAvatar={currentUser?.avatar}
+              hasUserStory={stories.some((s) => s.username === (currentUser?.username || 'you'))}
+            />
+          </div>
+        )}
 
         {/* PWA 1-Tap App Install Prompt Banner / Bottom Drawer */}
         <PwaInstallBanner
@@ -408,6 +474,22 @@ export const App: React.FC = () => {
             >
               <Sparkles size={14} className="text-cyan-300 animate-spin" />
               <span>🎉 Reel published live to GediOn Cloud!</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Floating Toast upon successfully publishing a new Story */}
+        <AnimatePresence>
+          {storyToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -15, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              className="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-white shadow-[0_0_25px_rgba(6,182,212,0.8)] backdrop-blur-xl pointer-events-none"
+            >
+              <Sparkles size={14} className="text-cyan-300 animate-spin" />
+              <span>{storyToast}</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -613,6 +695,22 @@ export const App: React.FC = () => {
           />
         )}
       </AnimatePresence>
+
+      {/* Story Fullscreen Preview Modal */}
+      <StoryPreviewModal
+        stories={stories}
+        initialIndex={selectedStoryIndex}
+        isOpen={isStoryPreviewOpen}
+        onClose={() => setIsStoryPreviewOpen(false)}
+      />
+
+      {/* Add Story Modal */}
+      <AddStoryModal
+        isOpen={isAddStoryOpen}
+        onClose={() => setIsAddStoryOpen(false)}
+        onPublishStory={handlePublishStory}
+        currentUser={currentUser}
+      />
     </div>
   );
 };

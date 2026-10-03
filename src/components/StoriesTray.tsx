@@ -7,13 +7,19 @@ interface StoriesTrayProps {
   stories: StoryItem[];
   onOpenYourStory: () => void;
   onSelectStory: (index: number) => void;
+  userAvatar?: string;
+  hasUserStory?: boolean;
 }
 
 export const StoriesTray: React.FC<StoriesTrayProps> = ({
   stories,
   onOpenYourStory,
   onSelectStory,
+  userAvatar,
+  hasUserStory = false,
 }) => {
+  const displayAvatar = userAvatar || USER_STORY_PROFILE.avatar;
+
   return (
     <div className="w-full bg-transparent overflow-hidden select-none pointer-events-auto">
       {/* Horizontal smooth scrolling row with hidden scrollbars */}
@@ -26,12 +32,20 @@ export const StoriesTray: React.FC<StoriesTrayProps> = ({
           aria-label="Add to your story"
         >
           {/* Avatar Container ~58px diameter */}
-          <div className="relative w-[58px] h-[58px] rounded-full p-[2px] bg-white/20 group-hover:bg-white/40 transition-colors">
-            <img
-              src={USER_STORY_PROFILE.avatar}
-              alt="Your story"
-              className="w-full h-full rounded-full object-cover border-2 border-black/80 shadow-md"
-            />
+          <div
+            className={`relative w-[58px] h-[58px] rounded-full p-[2px] transition-all ${
+              hasUserStory
+                ? 'bg-gradient-to-tr from-cyan-400 via-purple-500 to-pink-500 animate-story-glow shadow-md'
+                : 'bg-white/20 group-hover:bg-white/40'
+            }`}
+          >
+            <div className="w-full h-full rounded-full p-[1.5px] bg-black/80 overflow-hidden">
+              <img
+                src={displayAvatar}
+                alt="Your story"
+                className="w-full h-full rounded-full object-cover shadow-md"
+              />
+            </div>
             {/* Small '+' badge at the bottom-right */}
             <div className="absolute -bottom-0.5 -right-0.5 flex h-[19px] w-[19px] items-center justify-center rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 border-2 border-black text-white shadow-md">
               <Plus size={12} strokeWidth={3.5} />

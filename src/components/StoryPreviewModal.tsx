@@ -146,13 +146,26 @@ export const StoryPreviewModal: React.FC<StoryPreviewModalProps> = ({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
         >
-          {/* Background Media Image */}
-          <div className="absolute inset-0 z-0 bg-neutral-900">
-            <img
-              src={currentStory.storyMediaUrl}
-              alt={`${currentStory.username}'s story`}
-              className="h-full w-full object-cover select-none pointer-events-none"
-            />
+          {/* Background Media Image or Video */}
+          <div className="absolute inset-0 z-0 bg-neutral-900 flex items-center justify-center">
+            {currentStory.storyMediaUrl?.match(/\.(mp4|webm|mov|ogg)($|\?)/i) ||
+            currentStory.storyMediaUrl?.startsWith('blob:') ||
+            currentStory.storyMediaUrl?.startsWith('data:video') ? (
+              <video
+                src={currentStory.storyMediaUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="h-full w-full object-cover select-none pointer-events-none"
+              />
+            ) : (
+              <img
+                src={currentStory.storyMediaUrl}
+                alt={`${currentStory.username}'s story`}
+                className="h-full w-full object-cover select-none pointer-events-none"
+              />
+            )}
             {/* Top and bottom dark scrims for legibility */}
             <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none" />
             <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/90 via-black/45 to-transparent pointer-events-none" />
