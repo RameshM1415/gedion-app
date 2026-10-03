@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -32,7 +32,7 @@ import { SettingsModal } from './SettingsModal';
 import { ShareProfileModal } from './ShareProfileModal';
 import { CreatorInsightsModal } from './CreatorInsightsModal';
 import { WalletScreen } from './WalletScreen';
-import { AuthUser } from '../utils/authStorage';
+import { AuthUser, DEFAULT_AUTH_USER, getStoredAuth } from '../utils/authStorage';
 import {
   supabase,
   mapSupabaseRowToReel,
@@ -40,6 +40,7 @@ import {
   syncProfileToSupabase,
   fetchSupabaseProfile,
   fetchUserMetricsFromSupabase,
+  fetchUserPostsFromSupabase,
   UserProfileData,
 } from '../utils/supabaseClient';
 
@@ -80,26 +81,49 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onSignOut,
   currentUser,
 }) => {
-  // Load persisted user profile or fall back to default
+  // Load persisted user profile or initialize from authenticated session
   const [profile, setProfile] = useState<UserProfileData>(() => {
+    const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return { ...DEFAULT_PROFILE, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        if (active && parsed.username === 'creator' && active.username !== 'creator') {
+          return {
+            ...DEFAULT_PROFILE,
+            ...parsed,
+            name: active.displayName || active.username,
+            username: active.username,
+            avatar: active.avatar || parsed.avatar,
+          };
+        }
+        return { ...DEFAULT_PROFILE, ...parsed };
       }
     } catch {
       // ignore
     }
-    if (currentUser) {
+    if (active) {
       return {
         ...DEFAULT_PROFILE,
-        name: currentUser.displayName || currentUser.username || DEFAULT_PROFILE.name,
-        username: currentUser.username || DEFAULT_PROFILE.username,
-        avatar: currentUser.avatar || DEFAULT_PROFILE.avatar,
+        name: active.displayName || active.username || DEFAULT_PROFILE.name,
+        username: active.username || DEFAULT_PROFILE.username,
+        avatar: active.avatar || DEFAULT_PROFILE.avatar,
       };
     }
     return DEFAULT_PROFILE;
   });
+
+  // Sync profile when currentUser prop changes
+  useEffect(() => {
+    if (currentUser) {
+      setProfile((prev) => ({
+        ...prev,
+        name: currentUser.displayName || currentUser.username || prev.name,
+        username: currentUser.username || prev.username,
+        avatar: currentUser.avatar || prev.avatar,
+      }));
+    }
+  }, [currentUser]);
 
   const [activeProfileTab, setActiveProfileTab] = useState<'reels' | 'saved'>('reels');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -117,7 +141,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [followingCount, setFollowingCount] = useState<number>(0);
   const [totalLikesCount, setTotalLikesCount] = useState<number>(0);
 
-  // Creator's uploaded reels from Supabase 'posts' table
+  // Creator's uploaded reels from Supabase 'posts' table & local state
   const [creatorReels, setCreatorReels] = useState<Reel[]>([]);
   const [isLoadingReels, setIsLoadingReels] = useState(false);
 
@@ -138,46 +162,118 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     return reels.filter((r) => r.isBookmarked).map((r) => r.id);
   });
 
-  // Fetch creator reels from Supabase `posts` table
+  // Fetch creator reels from Supabase `posts` / `reels` table
   const loadCreatorReels = useCallback(async () => {
     setIsLoadingReels(true);
+    const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
+    const targetUserId = active?.id;
+    const targetUsername = active?.username || profile.username || 'rameshrao034';
+    const targetDisplayName = active?.displayName || profile.name;
+
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // 1. Accurately query Supabase's posts / reels table for the logged-in user's uploads
+      const userPosts = await fetchUserPostsFromSupabase(
+        targetUserId,
+        targetUsername,
+        targetDisplayName
+      );
 
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const mapped = data
-          .filter((row: any) => Boolean(row && row.video_url))
-          .map((row: SupabaseReelRow) => mapSupabaseRowToReel(row));
-
-        const filtered = mapped.filter((r) => {
-          if (currentUser?.id && r.creatorId && r.creatorId === currentUser.id) {
-            return true;
-          }
-          const matchUsername =
-            r.username.toLowerCase() === profile.username.toLowerCase();
-          const matchDisplayName =
-            r.displayName.toLowerCase() === profile.name.toLowerCase();
-          return matchUsername || matchDisplayName;
-        });
-
-        setCreatorReels(filtered);
-      } else {
-        setCreatorReels([]);
+      // 2. Also check any local custom reels published in current browser storage
+      let localCustom: Reel[] = [];
+      try {
+        const raw = localStorage.getItem('gedion_custom_reels');
+        if (raw) localCustom = JSON.parse(raw);
+      } catch (e) {
+        console.warn('Error reading local custom reels', e);
       }
+
+      const cleanUser = targetUsername.toLowerCase().replace(/^@/, '');
+      const isRamesh = cleanUser === 'rameshrao034' || (targetUserId && targetUserId.includes('rameshrao034'));
+
+      const validLocal = localCustom.filter((r) => {
+        if (r.id.startsWith('mock_')) return false;
+        if (targetUserId && r.creatorId === targetUserId) return true;
+        const u = r.username.toLowerCase().replace(/^@/, '');
+        if (u === cleanUser) return true;
+        if (isRamesh && u === 'rameshrao034') return true;
+        return false;
+      });
+
+      // Merge and deduplicate by id and videoUrl
+      const combined = [...validLocal, ...userPosts];
+      const seen = new Set<string>();
+      const deduped: Reel[] = [];
+      for (const r of combined) {
+        const key = String(r.id || r.videoUrl || '');
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          deduped.push(r);
+        }
+      }
+
+      setCreatorReels(deduped);
     } catch (err) {
       console.warn('Error loading creator posts:', err);
-      setCreatorReels([]);
     } finally {
       setIsLoadingReels(false);
     }
-  }, [profile.username, profile.name, currentUser?.id]);
+  }, [currentUser, profile.username, profile.name]);
+
+  // Listen for newly published reels via upload modal:
+  // Optimistically increment REELS count and re-fetch from Supabase immediately without page reload!
+  useEffect(() => {
+    const handleReelPublished = (e: Event) => {
+      const customEvent = e as CustomEvent<Reel>;
+      const newReel = customEvent.detail;
+      if (newReel) {
+        // Optimistically increment REELS count and prepend to creatorReels grid
+        setCreatorReels((prev) => {
+          const filtered = prev.filter((r) => r.id !== newReel.id);
+          return [newReel, ...filtered];
+        });
+      }
+      // Re-fetch from Supabase immediately so the count updates instantly without requiring a page reload
+      loadCreatorReels();
+    };
+
+    window.addEventListener('reel-published', handleReelPublished);
+    return () => {
+      window.removeEventListener('reel-published', handleReelPublished);
+    };
+  }, [loadCreatorReels]);
+
+  // Ensure any reels uploaded and present in parent reels state are also reflected in creatorReels
+  useEffect(() => {
+    if (Array.isArray(reels) && reels.length > 0) {
+      const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
+      const targetUserId = active?.id;
+      const cleanUser = (active?.username || profile.username || 'rameshrao034').toLowerCase().replace(/^@/, '');
+      const isRamesh = cleanUser === 'rameshrao034' || (targetUserId && targetUserId.includes('rameshrao034'));
+
+      const userReelsFromProps = reels.filter((r) => {
+        if (r.id.startsWith('mock_')) return false;
+        if (targetUserId && r.creatorId === targetUserId) return true;
+        const u = r.username.toLowerCase().replace(/^@/, '');
+        if (u === cleanUser) return true;
+        if (isRamesh && u === 'rameshrao034') return true;
+        return false;
+      });
+
+      if (userReelsFromProps.length > 0) {
+        setCreatorReels((prev) => {
+          const seen = new Set(prev.map((p) => p.id || p.videoUrl));
+          const toAdd = userReelsFromProps.filter((r) => !seen.has(r.id || r.videoUrl));
+          if (toAdd.length === 0) return prev;
+          return [...toAdd, ...prev];
+        });
+      }
+    }
+  }, [reels, currentUser, profile.username]);
 
   // Sync profile, metrics, and wallet balance from Supabase on mount
   useEffect(() => {
     let isMounted = true;
+    const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
 
     if (profile.username) {
       fetchSupabaseProfile(profile.username).then((cloudData) => {
@@ -191,7 +287,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
 
     // Fetch real followers, following, and likes counts from Supabase
-    fetchUserMetricsFromSupabase(currentUser?.id).then((metrics) => {
+    fetchUserMetricsFromSupabase(active?.id, active?.username || profile.username).then((metrics) => {
       if (isMounted) {
         setFollowersCount(metrics.followersCount);
         setFollowingCount(metrics.followingCount);
@@ -200,11 +296,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     });
 
     // Fetch real wallet balance from Supabase 'wallets' table
-    if (currentUser?.id) {
+    if (active?.id) {
       supabase
         .from('wallets')
         .select('*')
-        .eq('user_id', currentUser.id)
+        .eq('user_id', active.id)
         .maybeSingle()
         .then(({ data }) => {
           if (isMounted && data) {
@@ -226,7 +322,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [profile.username, currentUser?.id, loadCreatorReels]);
+  }, [profile.username, currentUser, loadCreatorReels]);
+
+  // 3. Likes & Engagement Aggregation:
+  // Calculate total LIKES counter on profile by summing the likes_count across all reels published by this user
+  const dynamicLikesCount = useMemo(() => {
+    const sumFromReels = creatorReels.reduce((acc, r) => acc + (Number(r.likesCount) || 0), 0);
+    return Math.max(sumFromReels, totalLikesCount);
+  }, [creatorReels, totalLikesCount]);
 
   // Sync savedReelIds to localStorage
   useEffect(() => {
@@ -545,7 +648,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <div className="h-6 w-[1px] bg-white/10" />
           <div className="flex flex-col items-center">
             <span className="font-black text-sm text-pink-300 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]">
-              {totalLikesCount.toLocaleString('en-IN')}
+              {dynamicLikesCount.toLocaleString('en-IN')}
             </span>
             <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-0.5">
               Likes
@@ -699,11 +802,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     onClick={() => handleTileClick(reel)}
                     className="group relative aspect-[9/15] rounded-xl overflow-hidden cursor-pointer bg-zinc-900 border border-white/10 transition-all hover:scale-[1.03] active:scale-95 shadow-md hover:border-cyan-400/50"
                   >
-                    <img
-                      src={reel.poster || reel.videoUrl}
-                      alt={reel.caption}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
+                    {reel.poster ? (
+                      <img
+                        src={reel.poster}
+                        alt={reel.caption || 'Creator Reel'}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <video
+                        src={`${reel.videoUrl}#t=0.001`}
+                        preload="metadata"
+                        muted
+                        playsInline
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 pointer-events-none"
+                      />
+                    )}
 
                     {/* Play Icon indicator on top-right */}
                     {isVideo && (
@@ -712,11 +826,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       </div>
                     )}
 
-                    {/* View count badge in bottom-left */}
+                    {/* View / Likes count badge in bottom-left */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex items-end p-1.5">
                       <span className="text-[10px] font-bold text-white flex items-center gap-1 drop-shadow-md">
                         <Heart size={10} className="fill-pink-500 text-pink-500" />
-                        {reel.viewsCount || '0'}
+                        {reel.likesCount || reel.viewsCount || '0'}
                       </span>
                     </div>
                   </div>

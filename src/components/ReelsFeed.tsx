@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Plus, Radio, RefreshCw } from 'lucide-react';
 import { Reel } from '../types';
 import { ReelItem } from './ReelItem';
-import { supabase, mapSupabaseRowToReel, SupabaseReelRow } from '../utils/supabaseClient';
+import { supabase, mapSupabaseRowToReel, SupabaseReelRow, fetchSupabaseReels } from '../utils/supabaseClient';
 import { AuthUser } from '../utils/authStorage';
 
 interface ReelsFeedProps {
@@ -68,34 +68,15 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
     });
   }, []);
 
-  // Fetch ONLY real posts directly from Supabase 'posts' table
+  // Fetch real posts & reels directly from Supabase
   const fetchReels = useCallback(
     async (silent = false) => {
       if (!silent) setIsFetchingCloud(true);
       try {
-        const { data, error } = await supabase
-          .from('posts')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.warn('Supabase posts fetch note:', error.message);
-          setFetchGlitch(false);
-        } else if (Array.isArray(data)) {
-          setFetchGlitch(false);
-          const mapped = data
-            .filter((item: any) => Boolean(item && item.video_url))
-            .map((item: any) => {
-              if (item && item.videoUrl && item.displayName) return item as Reel;
-              return mapSupabaseRowToReel(item as SupabaseReelRow);
-            });
-          setFeedReels(mapped);
-          onReelsLoaded?.(mapped);
-        } else {
-          setFetchGlitch(false);
-          setFeedReels([]);
-          onReelsLoaded?.([]);
-        }
+        const cloudReels = await fetchSupabaseReels();
+        setFetchGlitch(false);
+        setFeedReels(cloudReels);
+        onReelsLoaded?.(cloudReels);
       } catch (err: any) {
         console.warn('Network exception while fetching posts:', err);
         const isFatalNetwork =

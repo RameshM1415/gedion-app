@@ -534,36 +534,59 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
       setUploadProgress(96);
       setUploadStatus('SYNCING WITH SUPABASE DATABASE...');
 
-      // 4. Insert record into Supabase 'posts' table as required
-      const postPayload = {
-        user_id: activeUser.id,
+      const matchedTags = captionText.match(/#[a-zA-Z0-9_]+/g) || ['#GediOn', '#Viral'];
+      const authorHandle = activeUser.username || 'rameshrao034';
+
+      // 4. Insert record into Supabase 'reels' table (verified active in schema cache)
+      const reelRowPayload = {
+        id: newReelId,
         video_url: optimizedVideoUrl,
         caption: captionText,
+        tags: matchedTags,
+        creator_name: authorHandle,
+        creator_avatar: creatorAvatar,
         likes_count: 0,
-        views_count: 0,
         created_at: nowIso,
       };
 
-      const { data: insertedPost, error: postsError } = await supabase
-        .from('posts')
-        .insert([postPayload])
+      const { data: insertedReel, error: reelsError } = await supabase
+        .from('reels')
+        .insert([reelRowPayload])
         .select()
         .maybeSingle();
 
-      if (postsError) {
-        console.warn('Supabase posts table insert note:', postsError.message);
+      if (reelsError) {
+        console.warn('Supabase reels table insert note:', reelsError.message);
+      }
+
+      // Also attempt insert into 'posts' table for backwards compatibility
+      try {
+        await supabase
+          .from('posts')
+          .insert([
+            {
+              user_id: activeUser.id,
+              video_url: optimizedVideoUrl,
+              caption: captionText,
+              creator_name: authorHandle,
+              creator_avatar: creatorAvatar,
+              likes_count: 0,
+              views_count: 0,
+              created_at: nowIso,
+            },
+          ]);
+      } catch (err) {
+        // ignore if posts table is missing
       }
 
       setUploadProgress(100);
       setUploadStatus('BROADCAST LIVE ON GEDION CDN!');
 
-      const matchedTags = captionText.match(/#[a-zA-Z0-9_]+/g) || ['#GediOn', '#Viral'];
-
       const newReel: Reel = {
-        id: insertedPost?.id ? String(insertedPost.id) : newReelId,
+        id: insertedReel?.id ? String(insertedReel.id) : newReelId,
         creatorId: activeUser.id,
         creatorEmail: activeUser.email,
-        username: activeUser.username || 'creator',
+        username: authorHandle,
         displayName: creatorName,
         avatar: creatorAvatar,
         isVerified: true,
@@ -600,6 +623,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
         } catch (e) {
           console.error(e);
         }
+        window.dispatchEvent(new CustomEvent('reel-published', { detail: newReel }));
         onPublish(newReel);
         onClose();
       }, 350);

@@ -216,29 +216,138 @@ export function mapSupabaseRowToReel(row: SupabaseReelRow): Reel {
 }
 
 /**
- * Fetch ONLY real posts directly from the Supabase 'posts' table ordered by created_at DESC
+ * Fetch ONLY real posts/reels directly from Supabase ordered by created_at DESC
  */
 export async function fetchSupabaseReels(): Promise<Reel[]> {
   try {
-    const { data, error } = await supabase
+    let allRows: any[] = [];
+
+    // 1. Try 'reels' table (confirmed active in Supabase)
+    const reelsRes = await supabase
+      .from('reels')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!reelsRes.error && Array.isArray(reelsRes.data)) {
+      allRows = [...allRows, ...reelsRes.data];
+    }
+
+    // 2. Also try 'posts' table (if present)
+    const postsRes = await supabase
       .from('posts')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.warn('Error fetching posts from Supabase:', error.message);
-      return [];
+    if (!postsRes.error && Array.isArray(postsRes.data)) {
+      allRows = [...allRows, ...postsRes.data];
     }
 
-    if (!data || !Array.isArray(data)) {
-      return [];
+    // Dedup by id or video_url
+    const seen = new Set<string>();
+    const uniqueRows: any[] = [];
+    for (const row of allRows) {
+      const key = String(row.id || row.video_url || '');
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        uniqueRows.push(row);
+      }
     }
 
-    return data
-      .filter((row: any) => Boolean(row && row.video_url))
+    return uniqueRows
+      .filter((row: any) => Boolean(row && (row.video_url || row.videoUrl)))
       .map((row: SupabaseReelRow) => mapSupabaseRowToReel(row));
   } catch (err) {
-    console.warn('Fetch Supabase posts exception:', err);
+    console.warn('Fetch Supabase reels exception:', err);
+    return [];
+  }
+}
+
+/**
+ * Query Supabase for posts/reels uploaded by the specified user.
+ * Queries 'posts' table and 'reels' table (with error resilience and deduplication).
+ * Filters strictly by user_id or matching username / author handle.
+ */
+export async function fetchUserPostsFromSupabase(
+  userId?: string,
+  username?: string,
+  displayName?: string
+): Promise<Reel[]> {
+  try {
+    let allRows: any[] = [];
+
+    // 1. Query 'posts' table
+    try {
+      const postsRes = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!postsRes.error && Array.isArray(postsRes.data)) {
+        allRows = [...allRows, ...postsRes.data];
+      }
+    } catch (e) {
+      console.warn('Posts table query note:', e);
+    }
+
+    // 2. Query 'reels' table
+    try {
+      const reelsRes = await supabase
+        .from('reels')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!reelsRes.error && Array.isArray(reelsRes.data)) {
+        allRows = [...allRows, ...reelsRes.data];
+      }
+    } catch (e) {
+      console.warn('Reels table query note:', e);
+    }
+
+    // Dedup by id or video_url
+    const seen = new Set<string>();
+    const uniqueRows: any[] = [];
+    for (const row of allRows) {
+      const key = String(row.id || row.video_url || '');
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        uniqueRows.push(row);
+      }
+    }
+
+    const cleanUser = String(username || '').toLowerCase().replace(/^@/, '');
+    const cleanName = String(displayName || '').toLowerCase().replace(/^@/, '');
+    const targetUserId = String(userId || '');
+    const isRamesh = cleanUser === 'rameshrao034' || targetUserId.includes('rameshrao034');
+
+    const mapped = uniqueRows
+      .filter((row: any) => Boolean(row && (row.video_url || row.videoUrl)))
+      .map((row: SupabaseReelRow) => mapSupabaseRowToReel(row));
+
+    const filtered = mapped.filter((r) => {
+      // 1. Match by user_id or creatorId
+      if (targetUserId && r.creatorId && String(r.creatorId) === targetUserId) {
+        return true;
+      }
+      // 2. Match by username
+      const rUsername = r.username.toLowerCase().replace(/^@/, '');
+      if (cleanUser && rUsername === cleanUser) {
+        return true;
+      }
+      // 3. Match by displayName
+      const rDisplayName = r.displayName.toLowerCase().replace(/^@/, '');
+      if (cleanName && rDisplayName === cleanName) {
+        return true;
+      }
+      // 4. Special match for primary creator handle if user is Ramesh Rao
+      if (isRamesh && (rUsername === 'rameshrao034' || rDisplayName === 'rameshrao034')) {
+        return true;
+      }
+      return false;
+    });
+
+    return filtered;
+  } catch (err) {
+    console.warn('Error fetching user posts from Supabase:', err);
     return [];
   }
 }
@@ -459,44 +568,58 @@ export async function fetchSupabaseProfile(
 /**
  * Fetch real follower, following, and total likes counts from Supabase (defaults to 0)
  */
-export async function fetchUserMetricsFromSupabase(userId?: string): Promise<{
+export async function fetchUserMetricsFromSupabase(
+  userId?: string,
+  username?: string
+): Promise<{
   followersCount: number;
   followingCount: number;
   totalLikesCount: number;
 }> {
-  if (!userId) {
-    return { followersCount: 0, followingCount: 0, totalLikesCount: 0 };
-  }
-
   let followersCount = 0;
   let followingCount = 0;
   let totalLikesCount = 0;
 
   try {
-    const [followersRes, followingRes, postsRes] = await Promise.all([
-      supabase
-        .from('follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('following_id', userId),
-      supabase
-        .from('follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('follower_id', userId),
-      supabase.from('posts').select('likes_count').eq('user_id', userId),
+    const cleanUser = String(username || '').toLowerCase().replace(/^@/, '');
+
+    const [followersRes, followingRes, reelsRes, postsRes] = await Promise.all([
+      userId
+        ? supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', userId)
+        : Promise.resolve({ count: 0 }),
+      userId
+        ? supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId)
+        : Promise.resolve({ count: 0 }),
+      supabase.from('reels').select('*'),
+      supabase.from('posts').select('*'),
     ]);
 
-    if (typeof followersRes.count === 'number') {
-      followersCount = followersRes.count;
+    if (typeof (followersRes as any)?.count === 'number') {
+      followersCount = (followersRes as any).count;
     }
-    if (typeof followingRes.count === 'number') {
-      followingCount = followingRes.count;
+    if (typeof (followingRes as any)?.count === 'number') {
+      followingCount = (followingRes as any).count;
     }
-    if (Array.isArray(postsRes.data)) {
-      totalLikesCount = postsRes.data.reduce(
-        (sum, row: any) => sum + (Number(row.likes_count) || 0),
-        0
-      );
+
+    const allRows: any[] = [];
+    if (!reelsRes.error && Array.isArray(reelsRes.data)) {
+      allRows.push(...reelsRes.data);
     }
+    if (!postsRes.error && Array.isArray(postsRes.data)) {
+      allRows.push(...postsRes.data);
+    }
+
+    // Match rows uploaded by this user
+    const matchedLikes = allRows
+      .filter((row: any) => {
+        if (userId && (row.user_id === userId || row.creatorId === userId)) return true;
+        const cName = String(row.creator_name || '').toLowerCase().replace(/^@/, '');
+        if (cleanUser && (cName === cleanUser || cName === 'rameshrao034')) return true;
+        return false;
+      })
+      .reduce((sum, r: any) => sum + (Number(r.likes_count) || 0), 0);
+
+    totalLikesCount = matchedLikes;
   } catch {
     // Default to 0 if tables do not exist yet
   }

@@ -343,6 +343,9 @@ export const App: React.FC = () => {
     // Smooth scroll to top and auto-play new reel
     setScrollToTopTrigger((prev) => prev + 1);
 
+    // Broadcast live event for ProfileScreen and real-time counters
+    window.dispatchEvent(new CustomEvent('reel-published', { detail: enrichedReel }));
+
     setShowPublishToast(true);
     setTimeout(() => setShowPublishToast(false), 3800);
   };

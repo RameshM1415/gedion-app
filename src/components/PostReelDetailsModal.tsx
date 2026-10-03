@@ -154,23 +154,47 @@ export const PostReelDetailsModal: React.FC<PostReelDetailsModalProps> = ({
           uploadedUrl.replace('/video/upload/', '/video/upload/q_auto,f_auto,w_720,c_limit/')
         );
 
-        const { data: insertedPost } = await supabase
-          .from('posts')
+        const authorHandle = activeUser.username || 'rameshrao034';
+
+        // Insert into Supabase reels table
+        const { data: insertedReel } = await supabase
+          .from('reels')
           .insert([
             {
-              user_id: activeUser.id,
+              id: newReelId,
               video_url: finalVideoUrl,
               caption: captionText,
+              tags: ['#GediOn', '#Live'],
+              creator_name: authorHandle,
+              creator_avatar: activeUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
               likes_count: 0,
-              views_count: 0,
               created_at: nowIso,
             },
           ])
           .select()
           .maybeSingle();
 
-        if (insertedPost?.id) {
-          newReelId = String(insertedPost.id);
+        if (insertedReel?.id) {
+          newReelId = String(insertedReel.id);
+        }
+
+        // Also attempt insert into posts table
+        try {
+          await supabase
+            .from('posts')
+            .insert([
+              {
+                user_id: activeUser.id,
+                video_url: finalVideoUrl,
+                caption: captionText,
+                creator_name: authorHandle,
+                likes_count: 0,
+                views_count: 0,
+                created_at: nowIso,
+              },
+            ]);
+        } catch {
+          // ignore
         }
       }
     } catch (err) {
@@ -211,6 +235,7 @@ export const PostReelDetailsModal: React.FC<PostReelDetailsModalProps> = ({
     };
 
     setIsSubmitting(false);
+    window.dispatchEvent(new CustomEvent('reel-published', { detail: newReel }));
     onPublish(newReel);
   };
 
