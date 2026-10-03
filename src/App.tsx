@@ -435,111 +435,9 @@ export const App: React.FC = () => {
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-cyan-600/15 blur-[120px]" />
 
       {/* Mobile-first viewport container (9:16 aspect ratio framing with elegant bezel on desktop) */}
-      <main className="relative flex flex-col h-[100dvh] max-h-[100dvh] w-full max-w-[440px] md:h-[94vh] md:max-h-[890px] md:rounded-[36px] overflow-hidden bg-black shadow-[0_0_60px_-10px_rgba(168,85,247,0.3)] md:border md:border-white/15">
-        {/* Top Header with Refresh Indicator & Notifications Launcher */}
-        <TopHeader
-          currentFeedTab={feedTab}
-          onSelectFeedTab={(tab) => setFeedTab(tab)}
-          onOpenActivity={() => setNavTab('activity')}
-          onOpenNotifications={() => setNavTab('activity')}
-          onOpenAuth={() => setIsAuthModalOpen(true)}
-          currentUser={currentUser}
-          hasUnreadNotifications={false}
-          isRefreshing={isRefreshing}
-        />
-
-        {/* Stories / Status Bar Component at the Top (Below TopHeader) with Auto-Hide & Reveal on Scroll */}
-        {navTab === 'home' && (
-          <div
-            className={`w-full overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
-              isStoriesVisible
-                ? 'max-h-[96px] opacity-100 translate-y-0'
-                : 'max-h-0 opacity-0 -translate-y-full pointer-events-none'
-            }`}
-          >
-            <div className="w-full px-1.5 py-0.5 bg-gradient-to-b from-black/80 via-black/40 to-transparent backdrop-blur-[1px]">
-              <StoriesTray
-                stories={stories}
-                onOpenYourStory={handleOpenAddStory}
-                onSelectStory={handleSelectStory}
-                userAvatar={currentUser?.avatar}
-                hasUserStory={stories.some((s) => s.username === (currentUser?.username || 'you'))}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* PWA 1-Tap App Install Prompt Banner / Bottom Drawer */}
-        <PwaInstallBanner
-          deferredPrompt={deferredPrompt}
-          isModalOpen={isSheetOpen || isCreateOpen || isEditProfileOpen || isOnboardingVideoOpen || isAuthModalOpen}
-        />
-
-        {/* Floating Toast upon successfully publishing a new Reel */}
-        <AnimatePresence>
-          {showPublishToast && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -15, scale: 0.95 }}
-              transition={{ duration: 0.25 }}
-              className="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-white shadow-[0_0_25px_rgba(6,182,212,0.8)] backdrop-blur-xl pointer-events-none"
-            >
-              <Sparkles size={14} className="text-cyan-300 animate-spin" />
-              <span>🎉 Reel published live to GediOn Cloud!</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Floating Toast upon successfully publishing a new Story */}
-        <AnimatePresence>
-          {storyToast && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -15, scale: 0.95 }}
-              transition={{ duration: 0.25 }}
-              className="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-white shadow-[0_0_25px_rgba(6,182,212,0.8)] backdrop-blur-xl pointer-events-none"
-            >
-              <Sparkles size={14} className="text-cyan-300 animate-spin" />
-              <span>{storyToast}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Floating Toast upon Login Verification / Celebratory Auth */}
-        <AnimatePresence>
-          {authToast && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -15, scale: 0.95 }}
-              transition={{ duration: 0.25 }}
-              className="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-cyan-200 shadow-[0_0_25px_rgba(6,182,212,0.65)] backdrop-blur-xl pointer-events-none"
-            >
-              <Sparkles size={14} className="text-cyan-300 animate-spin" />
-              <span>{authToast}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Floating Toast upon Reporting a Reel */}
-        <AnimatePresence>
-          {reportToast && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -15, scale: 0.95 }}
-              transition={{ duration: 0.25 }}
-              className="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-rose-950/95 border border-rose-500 text-xs font-bold text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.85)] backdrop-blur-xl pointer-events-none text-center max-w-[90%]"
-            >
-              <span>{reportToast}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Main Feed or Secondary Tab Views */}
-        <div className="relative flex-1 h-full w-full overflow-hidden">
+      <main className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[440px] md:h-[94vh] md:max-h-[890px] md:rounded-[36px] overflow-hidden bg-black shadow-[0_0_60px_-10px_rgba(168,85,247,0.3)] md:border md:border-white/15">
+        {/* Main Feed or Secondary Tab Views (Plays 100% Edge-to-Edge Underneath) */}
+        <div className="relative h-full w-full overflow-hidden">
           {feedTab === 'forYou' || displayedReels.length > 0 ? (
             <ReelsFeed
               reels={displayedReels}
@@ -640,6 +538,110 @@ export const App: React.FC = () => {
             />
           )}
         </div>
+
+        {/* Transparent & Fullscreen Top Overlay for Header & Stories Tray */}
+        {navTab === 'home' && (
+          <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none flex flex-col bg-gradient-to-b from-black/80 via-black/35 to-transparent pb-3 pt-1">
+            <TopHeader
+              currentFeedTab={feedTab}
+              onSelectFeedTab={(tab) => setFeedTab(tab)}
+              onOpenActivity={() => setNavTab('activity')}
+              onOpenNotifications={() => setNavTab('activity')}
+              onOpenAuth={() => setIsAuthModalOpen(true)}
+              currentUser={currentUser}
+              hasUnreadNotifications={false}
+              isRefreshing={isRefreshing}
+            />
+
+            {/* Stories Tray with Smooth Auto-Hide & Reveal on Scroll */}
+            <div
+              className={`w-full overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                isStoriesVisible
+                  ? 'max-h-[96px] opacity-100 translate-y-0 pointer-events-auto'
+                  : 'max-h-0 opacity-0 -translate-y-full pointer-events-none'
+              }`}
+            >
+              <div className="w-full px-2 py-0.5 bg-transparent">
+                <StoriesTray
+                  stories={stories}
+                  onOpenYourStory={handleOpenAddStory}
+                  onSelectStory={handleSelectStory}
+                  userAvatar={currentUser?.avatar}
+                  hasUserStory={stories.some((s) => s.username === (currentUser?.username || 'you'))}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PWA 1-Tap App Install Prompt Banner / Bottom Drawer */}
+        <PwaInstallBanner
+          deferredPrompt={deferredPrompt}
+          isModalOpen={isSheetOpen || isCreateOpen || isEditProfileOpen || isOnboardingVideoOpen || isAuthModalOpen}
+        />
+
+        {/* Floating Toast upon successfully publishing a new Reel */}
+        <AnimatePresence>
+          {showPublishToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -15, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-white shadow-[0_0_25px_rgba(6,182,212,0.8)] backdrop-blur-xl pointer-events-none"
+            >
+              <Sparkles size={14} className="text-cyan-300 animate-spin" />
+              <span>🎉 Reel published live to GediOn Cloud!</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Floating Toast upon successfully publishing a new Story */}
+        <AnimatePresence>
+          {storyToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -15, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-white shadow-[0_0_25px_rgba(6,182,212,0.8)] backdrop-blur-xl pointer-events-none"
+            >
+              <Sparkles size={14} className="text-cyan-300 animate-spin" />
+              <span>{storyToast}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Floating Toast upon Login Verification / Celebratory Auth */}
+        <AnimatePresence>
+          {authToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -15, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-cyan-200 shadow-[0_0_25px_rgba(6,182,212,0.65)] backdrop-blur-xl pointer-events-none"
+            >
+              <Sparkles size={14} className="text-cyan-300 animate-spin" />
+              <span>{authToast}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Floating Toast upon Reporting a Reel */}
+        <AnimatePresence>
+          {reportToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -15, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-rose-950/95 border border-rose-500 text-xs font-bold text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.85)] backdrop-blur-xl pointer-events-none text-center max-w-[90%]"
+            >
+              <span>{reportToast}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Comments Bottom Sheet Drawer */}
         <CommentDrawer
