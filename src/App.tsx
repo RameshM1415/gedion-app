@@ -92,6 +92,7 @@ export const App: React.FC = () => {
   const [isStoryPreviewOpen, setIsStoryPreviewOpen] = useState<boolean>(false);
   const [isAddStoryOpen, setIsAddStoryOpen] = useState<boolean>(false);
   const [storyToast, setStoryToast] = useState<string | null>(null);
+  const [isStoriesVisible, setIsStoriesVisible] = useState<boolean>(true);
 
   const handleSelectStory = (index: number) => {
     setSelectedStoryIndex(index);
@@ -251,11 +252,15 @@ export const App: React.FC = () => {
     setCommentReelId(null);
     setShareReelId(null);
     setReportReelId(null);
+    if (tab === 'home') {
+      setIsStoriesVisible(true);
+    }
     setNavTab(tab);
   };
 
   // Feature 1: Home Button Double-Tap to Refresh & Scroll-to-Top (Live Supabase 'posts' query)
     const handleHomeRefresh = async () => {
+    setIsStoriesVisible(true);
     setIsRefreshing(true);
     setScrollToTopTrigger((prev) => prev + 1);
     try {
@@ -443,16 +448,24 @@ export const App: React.FC = () => {
           isRefreshing={isRefreshing}
         />
 
-        {/* Stories / Status Bar Component at the Top (Below TopHeader) */}
+        {/* Stories / Status Bar Component at the Top (Below TopHeader) with Auto-Hide & Reveal on Scroll */}
         {navTab === 'home' && (
-          <div className="relative z-30 w-full px-1.5 py-1 bg-gradient-to-b from-black/75 via-black/40 to-transparent backdrop-blur-[1px]">
-            <StoriesTray
-              stories={stories}
-              onOpenYourStory={handleOpenAddStory}
-              onSelectStory={handleSelectStory}
-              userAvatar={currentUser?.avatar}
-              hasUserStory={stories.some((s) => s.username === (currentUser?.username || 'you'))}
-            />
+          <div
+            className={`w-full overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
+              isStoriesVisible
+                ? 'max-h-[96px] opacity-100 translate-y-0'
+                : 'max-h-0 opacity-0 -translate-y-full pointer-events-none'
+            }`}
+          >
+            <div className="w-full px-1.5 py-0.5 bg-gradient-to-b from-black/80 via-black/40 to-transparent backdrop-blur-[1px]">
+              <StoriesTray
+                stories={stories}
+                onOpenYourStory={handleOpenAddStory}
+                onSelectStory={handleSelectStory}
+                userAvatar={currentUser?.avatar}
+                hasUserStory={stories.some((s) => s.username === (currentUser?.username || 'you'))}
+              />
+            </div>
           </div>
         )}
 
@@ -539,6 +552,7 @@ export const App: React.FC = () => {
               onReelsLoaded={handleReelsLoaded}
               onNewRealtimeReel={handleNewRealtimeReel}
               currentUser={currentUser}
+              onStoriesVisibilityChange={setIsStoriesVisible}
               onRequireAuth={(prompt) => {
                 setAuthPromptMessage(prompt);
                 setIsAuthModalOpen(true);

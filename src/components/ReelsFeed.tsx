@@ -18,6 +18,7 @@ interface ReelsFeedProps {
   onNewRealtimeReel?: (newReel: Reel) => void;
   currentUser?: AuthUser | null;
   onRequireAuth?: (promptMessage: string) => void;
+  onStoriesVisibilityChange?: (visible: boolean) => void;
 }
 
 export const ReelsFeed: React.FC<ReelsFeedProps> = ({
@@ -33,6 +34,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   onNewRealtimeReel,
   currentUser,
   onRequireAuth,
+  onStoriesVisibilityChange,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -154,9 +156,10 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
         });
         setActiveIndex(0);
       }
+      onStoriesVisibilityChange?.(true);
       fetchReels(true);
     }
-  }, [scrollToTopTrigger, fetchReels]);
+  }, [scrollToTopTrigger, fetchReels, onStoriesVisibilityChange]);
 
   const handleScroll = useCallback(() => {
     const container = containerRef.current;
@@ -170,7 +173,14 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
     if (newIndex >= 0 && newIndex < feedReels.length && newIndex !== activeIndex) {
       setActiveIndex(newIndex);
     }
-  }, [activeIndex, feedReels.length]);
+
+    // Auto-hide stories when scrolling down into feed reels; reveal when at very top
+    if (scrollTop > 30) {
+      onStoriesVisibilityChange?.(false);
+    } else if (scrollTop <= 10) {
+      onStoriesVisibilityChange?.(true);
+    }
+  }, [activeIndex, feedReels.length, onStoriesVisibilityChange]);
 
   const handleLocalUpdateReel = useCallback(
     (updated: Reel) => {
@@ -189,6 +199,9 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
       if (e.key === 'ArrowDown' || e.key === 'PageDown') {
         e.preventDefault();
         const nextIndex = Math.min(feedReels.length - 1, activeIndex + 1);
+        if (nextIndex > 0) {
+          onStoriesVisibilityChange?.(false);
+        }
         container.scrollTo({
           top: nextIndex * container.clientHeight,
           behavior: 'smooth',
@@ -196,6 +209,9 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
       } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
         e.preventDefault();
         const prevIndex = Math.max(0, activeIndex - 1);
+        if (prevIndex === 0) {
+          onStoriesVisibilityChange?.(true);
+        }
         container.scrollTo({
           top: prevIndex * container.clientHeight,
           behavior: 'smooth',
@@ -205,7 +221,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeIndex, feedReels.length]);
+  }, [activeIndex, feedReels.length, onStoriesVisibilityChange]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#07070c] select-none">
