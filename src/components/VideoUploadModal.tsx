@@ -652,7 +652,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.22 }}
-        className="relative flex flex-col h-full w-full max-w-[460px] md:h-[92vh] md:max-h-[860px] md:rounded-[32px] overflow-hidden bg-[#07070b] border border-white/10 shadow-[0_0_60px_rgba(0,0,0,0.8),0_0_30px_rgba(6,182,212,0.15)] text-white"
+        className="relative flex flex-col h-full w-full max-w-[460px] md:h-[92vh] md:max-h-[860px] md:rounded-[32px] overflow-hidden bg-[#0a0a0f] border border-white/10 shadow-2xl text-white"
       >
         {/* TOP APP BAR - Clean, modern Instagram Reels style header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/10 bg-[#07070b]/90 backdrop-blur-md z-20 shrink-0">

@@ -36,6 +36,7 @@ import { CreatorInsightsModal } from './CreatorInsightsModal';
 import { WalletScreen } from './WalletScreen';
 import { ReelOptionsMenu } from './ReelOptionsMenu';
 import { AuthUser, DEFAULT_AUTH_USER, getStoredAuth } from '../utils/authStorage';
+import { useTheme } from '../context/ThemeContext';
 import {
   supabase,
   mapSupabaseRowToReel,
@@ -54,12 +55,12 @@ const STORAGE_KEY = 'gedion_user_profile_v1';
 const SAVED_REELS_STORAGE_KEY = 'gedion_saved_reels_v1';
 
 const DEFAULT_PROFILE: UserProfileData = {
-  name: 'Cyber Creator',
+  name: 'Creator',
   username: 'creator',
   bio: '',
   link: '',
   gender: 'Prefer not to say',
-  avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=creator&backgroundColor=06b6d4,a855f7',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
 };
 
 export interface ProfileScreenProps {
@@ -87,6 +88,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onDeleteReel,
   currentUser,
 }) => {
+  const { isDark } = useTheme();
   // Load persisted user profile or initialize from authenticated session
   const [profile, setProfile] = useState<UserProfileData>(() => {
     const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
@@ -545,7 +547,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-[#050509] text-white pt-3 pb-24 px-4 overflow-y-auto no-scrollbar select-none">
+    <div
+      className={`absolute inset-0 z-30 flex flex-col pt-3 pb-24 px-4 overflow-y-auto no-scrollbar select-none transition-colors ${
+        isDark ? 'bg-black text-white' : 'bg-white text-black'
+      }`}
+    >
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
@@ -554,20 +560,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -15, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-cyan-200 shadow-[0_0_25px_rgba(6,182,212,0.8)] backdrop-blur-xl"
+            className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur-xl"
           >
-            <Sparkles size={14} className="text-cyan-300 animate-spin" />
             <span>{toastMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* 1. Header: Username with verification badge, settings gear icon, and share profile action */}
-      <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+      <div
+        className={`flex items-center justify-between pb-3 border-b shrink-0 transition-colors ${
+          isDark ? 'border-[#262626]' : 'border-[#efefef]'
+        }`}
+      >
         <div className="flex items-center gap-1.5">
-          <span className="font-extrabold text-base text-white tracking-tight">@{profile.username}</span>
+          <span className="font-bold text-base tracking-tight">@{profile.username}</span>
           {currentUser && (
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-cyan-400 text-black text-[10px] font-black shadow-[0_0_10px_rgba(6,182,212,0.9)]">
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#0095f6] text-white text-[10px] font-black">
               ✓
             </span>
           )}
@@ -575,16 +584,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <button
               type="button"
               onClick={() => setIsSettingsModalOpen(true)}
-              className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-950/70 hover:bg-cyan-900/80 border border-cyan-400/40 text-[10px] font-bold text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.35)] transition-all active:scale-95"
+              className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-500/10 border border-zinc-500/20 text-[10px] font-semibold text-zinc-400"
             >
-              <ShieldCheck size={11} className="text-cyan-300" />
+              <ShieldCheck size={11} />
               <span>Verified</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={() => onOpenAuthModal?.('Sign in to access your creator profile & reels!')}
-              className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-[10px] font-bold text-cyan-300 transition-all active:scale-95 cursor-pointer"
+              className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-semibold text-blue-500 cursor-pointer"
             >
               <LogIn size={10} />
               <span>Guest</span>
@@ -592,15 +601,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {/* Share Profile Action Button */}
           <button
             type="button"
             onClick={() => setIsShareModalOpen(true)}
             aria-label="Share profile"
-            className="p-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-white transition-all border border-white/5 shadow-sm"
+            className="p-2 rounded-full hover:opacity-75 active:scale-95 transition-all"
           >
-            <Share2 size={17} />
+            <Share2 size={18} />
           </button>
 
           {/* Settings Gear Icon Button */}
@@ -608,9 +617,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             type="button"
             onClick={() => setIsSettingsModalOpen(true)}
             aria-label="Settings"
-            className="p-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-white transition-all border border-white/5 shadow-sm"
+            className="p-2 rounded-full hover:opacity-75 active:scale-95 transition-all"
           >
-            <Settings size={17} />
+            <Settings size={18} />
           </button>
 
           {/* Close / Back to Feed */}
@@ -618,22 +627,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Back to Feed"
-            className="p-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-white transition-all border border-white/5 shadow-sm"
+            className="p-2 rounded-full hover:opacity-75 active:scale-95 transition-all"
           >
-            <X size={17} />
+            <X size={18} />
           </button>
         </div>
       </div>
 
-      {/* 1. Profile Card: Glowing circular avatar, stats row, full name, handle, bio */}
+      {/* 1. Profile Card: Circular avatar with IG gradient ring, stats row, full name, handle, bio */}
       <div className="flex flex-col items-center mt-4">
-        {/* Glowing circular avatar with "Edit / Camera" badge */}
+        {/* Circular avatar with Instagram gradient ring and Camera badge */}
         <div className="relative">
-          <div className="h-24 w-24 rounded-full p-[2.5px] bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-pink-500 shadow-[0_0_25px_rgba(6,182,212,0.55)]">
+          <div className="h-24 w-24 rounded-full p-[2.5px] bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888]">
             <img
               src={profile.avatar}
               alt="Creator avatar"
-              className="h-full w-full rounded-full object-cover border-2 border-[#050509]"
+              className={`h-full w-full rounded-full object-cover border-2 ${
+                isDark ? 'border-black' : 'border-white'
+              }`}
             />
           </div>
 
@@ -642,7 +653,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             type="button"
             onClick={handleOpenEditModal}
             aria-label="Edit avatar"
-            className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-cyan-400 text-black border-2 border-[#050509] shadow-[0_0_12px_rgba(6,182,212,0.9)] hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+            className={`absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-[#0095f6] text-white border-2 hover:scale-110 active:scale-95 transition-transform cursor-pointer shadow-sm ${
+              isDark ? 'border-black' : 'border-white'
+            }`}
           >
             <Camera size={14} strokeWidth={2.5} />
           </button>
@@ -650,17 +663,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
         {/* Full Name & Handle (@creator) */}
         <div className="flex flex-col items-center mt-3 text-center">
-          <h2 className="font-extrabold text-lg text-white tracking-tight drop-shadow-sm">
+          <h2 className="font-bold text-base tracking-tight">
             {profile.name}
           </h2>
-          <span className="text-xs font-semibold text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]">
+          <span className="text-xs text-zinc-500 font-medium">
             @{profile.username}
           </span>
         </div>
 
         {/* Editable Bio text */}
         {profile.bio && (
-          <p className="text-xs text-white/85 max-w-xs text-center mt-1.5 leading-relaxed font-normal">
+          <p
+            className={`text-xs max-w-xs text-center mt-1.5 leading-relaxed font-normal ${
+              isDark ? 'text-zinc-300' : 'text-zinc-700'
+            }`}
+          >
             {profile.bio}
           </p>
         )}
@@ -671,163 +688,174 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             href={profile.link.startsWith('http') ? profile.link : `https://${profile.link}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 mt-1.5 text-xs text-cyan-300 hover:text-cyan-200 hover:underline"
+            className="flex items-center gap-1 mt-1.5 text-xs text-[#0095f6] hover:underline"
           >
             <LinkIcon size={12} />
             <span className="truncate max-w-[240px]">{profile.link.replace(/^https?:\/\//, '')}</span>
           </a>
         )}
 
-        {/* Stats Row: Reels Count, Followers Count, Following Count, and Likes Count from Supabase (starts at 0) */}
-        <div className="flex items-center justify-around w-full max-w-sm mt-4 py-2.5 px-4 rounded-2xl bg-white/[0.04] border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.5)] backdrop-blur-md">
+        {/* Stats Row: Reels Count, Followers Count, Following Count, and Likes Count */}
+        <div
+          className={`flex items-center justify-around w-full max-w-sm mt-4 py-2 px-4 rounded-xl border transition-colors ${
+            isDark ? 'bg-zinc-950 border-[#262626]' : 'bg-zinc-50 border-[#efefef]'
+          }`}
+        >
           <div className="flex flex-col items-center">
-            <span className="font-black text-sm text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]">
+            <span className="font-bold text-sm">
               {creatorReels.length}
             </span>
-            <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-0.5">
+            <span className="text-[11px] text-zinc-500 mt-0.5">
               Reels
             </span>
           </div>
-          <div className="h-6 w-[1px] bg-white/10" />
+          <div className={`h-6 w-[1px] ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
           <div className="flex flex-col items-center">
-            <span className="font-black text-sm text-fuchsia-300 drop-shadow-[0_0_8px_rgba(217,70,239,0.6)]">
+            <span className="font-bold text-sm">
               {followersCount.toLocaleString('en-IN')}
             </span>
-            <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-0.5">
+            <span className="text-[11px] text-zinc-500 mt-0.5">
               Followers
             </span>
           </div>
-          <div className="h-6 w-[1px] bg-white/10" />
+          <div className={`h-6 w-[1px] ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
           <div className="flex flex-col items-center">
-            <span className="font-black text-sm text-emerald-300 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]">
+            <span className="font-bold text-sm">
               {followingCount.toLocaleString('en-IN')}
             </span>
-            <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-0.5">
+            <span className="text-[11px] text-zinc-500 mt-0.5">
               Following
             </span>
           </div>
-          <div className="h-6 w-[1px] bg-white/10" />
+          <div className={`h-6 w-[1px] ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
           <div className="flex flex-col items-center">
-            <span className="font-black text-sm text-pink-300 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]">
+            <span className="font-bold text-sm">
               {dynamicLikesCount.toLocaleString('en-IN')}
             </span>
-            <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-0.5">
+            <span className="text-[11px] text-zinc-500 mt-0.5">
               Likes
             </span>
           </div>
         </div>
 
-        {/* Action Buttons: "Edit Profile", "Share", "Insights" */}
+        {/* Action Buttons: "Edit Profile", "Share Profile", "Insights" */}
         <div className="flex items-center gap-2 mt-4 w-full max-w-sm">
           <button
             type="button"
             onClick={handleOpenEditModal}
-            className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 active:scale-95 text-xs font-bold text-white border border-cyan-400/40 transition-all shadow-[0_0_12px_rgba(6,182,212,0.2)] flex items-center justify-center gap-1.5 cursor-pointer"
+            className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-semibold active:scale-95 transition-all cursor-pointer ${
+              isDark
+                ? 'bg-zinc-900 hover:bg-zinc-800 border-[#262626] text-white'
+                : 'bg-zinc-100 hover:bg-zinc-200 border-[#efefef] text-black'
+            }`}
           >
-            <span>Edit Profile</span>
+            <span>Edit profile</span>
           </button>
           <button
             type="button"
             onClick={() => setIsShareModalOpen(true)}
-            className="flex-1 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 active:scale-95 text-xs font-semibold text-white border border-white/15 transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-semibold active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              isDark
+                ? 'bg-zinc-900 hover:bg-zinc-800 border-[#262626] text-white'
+                : 'bg-zinc-100 hover:bg-zinc-200 border-[#efefef] text-black'
+            }`}
           >
-            <Share2 size={13} className="text-white/80" />
-            <span>Share</span>
+            <Share2 size={13} />
+            <span>Share profile</span>
           </button>
           <button
             type="button"
             onClick={() => setIsInsightsOpen(true)}
-            className="py-2 px-3 rounded-xl bg-gradient-to-r from-purple-950/80 to-cyan-950/80 hover:from-purple-900/90 hover:to-cyan-900/90 active:scale-95 text-xs font-bold text-cyan-200 border border-purple-400/50 hover:border-cyan-400/80 transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-[0_0_14px_rgba(168,85,247,0.3)] cursor-pointer"
+            className={`py-1.5 px-3 rounded-lg border text-xs font-semibold active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
+              isDark
+                ? 'bg-zinc-900 hover:bg-zinc-800 border-[#262626] text-white'
+                : 'bg-zinc-100 hover:bg-zinc-200 border-[#efefef] text-black'
+            }`}
             title="Creator Insights & Analytics"
           >
-            <Activity size={14} className="text-cyan-300 animate-pulse drop-shadow-[0_0_6px_#06b6d4]" />
+            <Activity size={14} />
             <span>Insights</span>
           </button>
         </div>
 
-        {/* 1. Glowing "Creator Wallet & Earnings" Card / Button */}
+        {/* Creator Wallet Card */}
         <div className="w-full max-w-sm mt-3.5">
-          <motion.button
+          <button
             type="button"
             onClick={() => setIsWalletOpen(true)}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full relative overflow-hidden rounded-2xl p-3.5 bg-gradient-to-r from-[#100b29] via-[#090b14] to-[#04151f] border border-cyan-400/40 shadow-[0_0_22px_rgba(6,182,212,0.35)] flex items-center justify-between group cursor-pointer"
+            className={`w-full rounded-xl p-3 border flex items-center justify-between transition-colors active:scale-98 cursor-pointer ${
+              isDark
+                ? 'bg-zinc-950 hover:bg-zinc-900 border-[#262626] text-white'
+                : 'bg-zinc-50 hover:bg-zinc-100 border-[#efefef] text-black'
+            }`}
           >
-            {/* Ambient neon light overlay */}
-            <div className="pointer-events-none absolute -inset-1 bg-gradient-to-r from-purple-500/10 via-cyan-500/15 to-pink-500/10 blur-sm opacity-60 group-hover:opacity-100 transition-opacity" />
-
-            <div className="relative z-10 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-400 to-purple-600 flex items-center justify-center p-[1.5px] shadow-[0_0_12px_rgba(6,182,212,0.6)] shrink-0">
-                <div className="h-full w-full rounded-[10px] bg-black/70 backdrop-blur-xs flex items-center justify-center text-cyan-300">
-                  <Wallet size={19} />
-                </div>
+            <div className="flex items-center gap-3">
+              <div
+                className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${
+                  isDark ? 'bg-zinc-900 text-white' : 'bg-zinc-200 text-zinc-900'
+                }`}
+              >
+                <Wallet size={18} />
               </div>
 
               <div className="text-left min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black text-white tracking-tight">
-                    Creator Wallet &amp; Earnings
-                  </span>
-                  <span className="px-1.5 py-0.2 rounded bg-cyan-400/20 text-cyan-300 text-[9px] font-black border border-cyan-400/30">
-                    UPI 24x7
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-sm font-extrabold text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.7)]">
-                    ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </span>
-                  <span className="text-[10px] text-emerald-400 font-bold truncate">
-                    • Instant Payout Ready 💸
-                  </span>
-                </div>
+                <p className="text-xs font-bold tracking-tight">Creator Wallet &amp; Earnings</p>
+                <p className="text-xs text-emerald-500 font-semibold mt-0.5">
+                  ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })} • Instant Payout
+                </p>
               </div>
             </div>
 
-            <div className="relative z-10 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-400/20 text-cyan-300 border border-cyan-400/40 text-xs font-bold group-hover:bg-cyan-400 group-hover:text-black transition-all shrink-0">
-              <span>Open</span>
-              <ArrowUpRight size={13} strokeWidth={2.5} />
+            <div className="flex items-center gap-1 text-xs font-semibold text-zinc-400">
+              <span>View</span>
+              <ArrowUpRight size={14} />
             </div>
-          </motion.button>
+          </button>
         </div>
 
-        {/* 3. Authentication Action: Sign Out button when logged in, or Log In / Register button if browsing as guest */}
+        {/* Authentication Action: Sign Out button when logged in, or Log In button if guest */}
         <div className="w-full max-w-sm mt-3">
           {currentUser ? (
             <button
               type="button"
               onClick={onSignOut}
-              className="w-full py-2.5 px-3 rounded-xl bg-rose-950/30 hover:bg-rose-950/60 active:scale-98 text-xs font-bold text-rose-300 border border-rose-500/30 hover:border-rose-500/60 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(244,63,94,0.15)]"
+              className="w-full py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/15 active:scale-98 text-xs font-semibold text-rose-500 border border-rose-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <LogOut size={14} className="text-rose-400" />
-              <span>Sign Out (@{profile.username})</span>
+              <LogOut size={14} />
+              <span>Log Out (@{profile.username})</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={() => onOpenAuthModal?.('Sign in to access your creator profile & broadcast reels!')}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 active:scale-98 text-xs font-black text-black shadow-[0_0_20px_rgba(6,182,212,0.7)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2 px-4 rounded-xl bg-[#0095f6] hover:bg-[#1877f2] active:scale-98 text-xs font-bold text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
             >
-              <LogIn size={15} strokeWidth={2.8} />
-              <span>Log In / Register on GediOn</span>
+              <LogIn size={15} />
+              <span>Log In to GediOn</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* 2. Creator Video Grid & Tabs: Tab 1 "My Reels", Tab 2 "Saved Reels" */}
-      <div className="flex items-center justify-around mt-6 border-b border-white/10 shrink-0">
+      {/* 2. Creator Video Grid & Tabs: Tab 1 "Reels", Tab 2 "Saved" */}
+      <div
+        className={`flex items-center justify-around mt-6 border-b shrink-0 transition-colors ${
+          isDark ? 'border-[#262626]' : 'border-[#efefef]'
+        }`}
+      >
         <button
           type="button"
           onClick={() => setActiveProfileTab('reels')}
           className={`flex items-center gap-1.5 pb-2.5 text-xs font-bold transition-all ${
             activeProfileTab === 'reels'
-              ? 'text-cyan-400 border-b-2 border-cyan-400 shadow-[0_2px_10px_rgba(6,182,212,0.4)]'
-              : 'text-white/40 hover:text-white/70'
+              ? isDark
+                ? 'text-white border-b-2 border-white'
+                : 'text-black border-b-2 border-black'
+              : 'text-zinc-400 border-b-2 border-transparent hover:text-zinc-600'
           }`}
         >
           <Grid size={16} />
-          <span>My Reels ({creatorReels.length})</span>
+          <span>Reels ({creatorReels.length})</span>
         </button>
 
         <button
@@ -835,12 +863,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           onClick={() => setActiveProfileTab('saved')}
           className={`flex items-center gap-1.5 pb-2.5 text-xs font-bold transition-all ${
             activeProfileTab === 'saved'
-              ? 'text-cyan-400 border-b-2 border-cyan-400 shadow-[0_2px_10px_rgba(6,182,212,0.4)]'
-              : 'text-white/40 hover:text-white/70'
+              ? isDark
+                ? 'text-white border-b-2 border-white'
+                : 'text-black border-b-2 border-black'
+              : 'text-zinc-400 border-b-2 border-transparent hover:text-zinc-600'
           }`}
         >
           <Bookmark size={16} />
-          <span>Saved Reels ({savedReels.length})</span>
+          <span>Saved ({savedReels.length})</span>
         </button>
       </div>
 
@@ -848,20 +878,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {activeProfileTab === 'reels' ? (
         <div className="mt-3 min-h-[220px]">
           {isLoadingReels ? (
-            <div className="flex flex-col items-center justify-center py-16 text-white/50 gap-2">
-              <Loader2 size={24} className="animate-spin text-cyan-400" />
-              <span className="text-xs">Fetching your creator reels...</span>
+            <div className="flex flex-col items-center justify-center py-16 text-zinc-500 gap-2">
+              <Loader2 size={24} className="animate-spin text-zinc-400" />
+              <span className="text-xs">Loading reels...</span>
             </div>
           ) : creatorReels.length > 0 ? (
             /* 3-Column Video Grid */
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1">
               {creatorReels.map((reel) => {
                 const isVideo = reel.mediaType === 'video' || (!reel.mediaType && Boolean(reel.videoUrl));
                 return (
                   <div
                     key={reel.id}
                     onClick={() => handleTileClick(reel)}
-                    className="group relative aspect-[9/15] rounded-xl overflow-hidden cursor-pointer bg-zinc-900 border border-white/10 transition-all hover:scale-[1.03] active:scale-95 shadow-md hover:border-cyan-400/50"
+                    className={`group relative aspect-[9/15] overflow-hidden cursor-pointer transition-all active:scale-95 ${
+                      isDark ? 'bg-zinc-900' : 'bg-zinc-100'
+                    }`}
                   >
                     {reel.poster ? (
                       <img
@@ -887,7 +919,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         e.stopPropagation();
                         handleOpenReelOptions(reel);
                       }}
-                      className="absolute top-1.5 left-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:text-white hover:bg-black/90 transition-colors z-10"
+                      className="absolute top-1.5 left-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md text-white/90 hover:text-white hover:bg-black/90 transition-colors z-10"
                       aria-label="Reel options"
                     >
                       <MoreVertical size={11} />
@@ -901,9 +933,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     )}
 
                     {/* View / Likes count badge in bottom-left */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex items-end p-1.5">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1.5">
                       <span className="text-[10px] font-bold text-white flex items-center gap-1 drop-shadow-md">
-                        <Heart size={10} className="fill-pink-500 text-pink-500" />
+                        <Heart size={10} className="fill-white text-white" />
                         {reel.likesCount || reel.viewsCount || '0'}
                       </span>
                     </div>
@@ -912,21 +944,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               })}
             </div>
           ) : (
-            /* 3. Empty State & Quick Upload Callout: Futuristic cyber grid empty state */
+            /* Clean Instagram Profile Empty State */
             <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-cyan-950/60 via-purple-950/60 to-black border border-cyan-400/30 mb-3 shadow-[0_0_30px_rgba(6,182,212,0.25)]">
-                <Tv size={32} className="text-cyan-300 drop-shadow-[0_0_12px_#06b6d4]" />
-                <Sparkles size={16} className="absolute -top-1 -right-1 text-fuchsia-400 animate-spin" />
+              <div
+                className={`flex h-16 w-16 items-center justify-center rounded-full mb-3 border ${
+                  isDark ? 'border-zinc-800 bg-zinc-950 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+                }`}
+              >
+                <Camera size={30} />
               </div>
 
-              <h3 className="text-sm font-extrabold text-white tracking-wide">
-                No reels yet
+              <h3 className="text-sm font-bold tracking-tight">
+                Share Photos and Videos
               </h3>
-              <p className="text-xs text-white/60 mt-1 max-w-xs leading-relaxed">
-                Be the first to broadcast into the cyber grid!
+              <p className="text-xs text-zinc-500 mt-1 max-w-xs leading-relaxed">
+                When you share photos and videos, they will appear on your profile.
               </p>
 
-              {/* Neon "+ Create Reel" shortcut button */}
               <button
                 type="button"
                 onClick={() => {
@@ -936,10 +970,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     onClose();
                   }
                 }}
-                className="mt-4 px-5 py-2.5 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-purple-500 text-black font-extrabold text-xs shadow-[0_0_20px_rgba(6,182,212,0.8)] hover:shadow-[0_0_30px_rgba(6,182,212,1)] active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="mt-4 px-4 py-2 rounded-lg bg-[#0095f6] text-white text-xs font-bold hover:bg-[#1877f2] active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
               >
-                <Plus size={16} strokeWidth={3} />
-                <span>+ Create Reel</span>
+                <Plus size={15} strokeWidth={2.5} />
+                <span>Share your first post</span>
               </button>
             </div>
           )}
@@ -948,14 +982,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         /* Tab 2: Saved Reels */
         <div className="mt-3 min-h-[220px]">
           {savedReels.length > 0 ? (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1">
               {savedReels.map((reel) => {
                 const isVideo = reel.mediaType === 'video' || (!reel.mediaType && Boolean(reel.videoUrl));
                 return (
                   <div
                     key={reel.id}
                     onClick={() => handleTileClick(reel)}
-                    className="group relative aspect-[9/15] rounded-xl overflow-hidden cursor-pointer bg-zinc-900 border border-white/10 transition-all hover:scale-[1.03] active:scale-95 shadow-md hover:border-cyan-400/50"
+                    className={`group relative aspect-[9/15] overflow-hidden cursor-pointer transition-all active:scale-95 ${
+                      isDark ? 'bg-zinc-900' : 'bg-zinc-100'
+                    }`}
                   >
                     <img
                       src={reel.poster || reel.videoUrl}
@@ -965,7 +1001,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
                     {/* Bookmark badge top-right */}
                     <div className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md">
-                      <Bookmark size={11} className="fill-cyan-400 text-cyan-400" />
+                      <Bookmark size={11} className="fill-white text-white" />
                     </div>
 
                     {isVideo && (
@@ -974,10 +1010,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       </div>
                     )}
 
-                    {/* View count badge in bottom-left */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex items-end p-1.5">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1.5">
                       <span className="text-[10px] font-bold text-white flex items-center gap-1 drop-shadow-md">
-                        <Heart size={10} className="fill-pink-500 text-pink-500" />
+                        <Heart size={10} className="fill-white text-white" />
                         {reel.viewsCount || '0'}
                       </span>
                     </div>
@@ -987,12 +1022,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04] border border-white/10 mb-3 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
-                <Bookmark size={26} className="text-cyan-400" />
+              <div
+                className={`flex h-16 w-16 items-center justify-center rounded-full mb-3 border ${
+                  isDark ? 'border-zinc-800 bg-zinc-950 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+                }`}
+              >
+                <Bookmark size={26} />
               </div>
-              <h3 className="text-sm font-bold text-white tracking-wide">No Saved Reels Yet</h3>
-              <p className="text-xs text-white/50 mt-1 max-w-xs leading-relaxed">
-                Reels you save with the bookmark button will appear here for quick access.
+              <h3 className="text-sm font-bold tracking-tight">Save</h3>
+              <p className="text-xs text-zinc-500 mt-1 max-w-xs leading-relaxed">
+                Save photos and videos that you want to see again. No one is notified, and only you can see what you&apos;ve saved.
               </p>
             </div>
           )}
@@ -1034,7 +1073,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => handleOpenReelOptions(playbackReel)}
-                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:border-cyan-400/50 hover:bg-black/80"
+                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:border-white/30 hover:bg-black/80"
                   aria-label="Reel options"
                 >
                   <MoreVertical size={16} />
@@ -1079,11 +1118,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   {playbackReel.caption}
                 </p>
                 <div className="flex items-center gap-4 mt-1 text-xs text-white/70">
-                  <span className="flex items-center gap-1 text-pink-400 font-bold">
-                    <Heart size={14} className="fill-pink-500" />
+                  <span className="flex items-center gap-1 text-rose-500 font-bold">
+                    <Heart size={14} className="fill-rose-500 text-rose-500" />
                     {playbackReel.likesCount}
                   </span>
-                  <span className="flex items-center gap-1 font-bold text-cyan-300">
+                  <span className="flex items-center gap-1 font-bold text-white/90">
                     <MessageCircle size={14} />
                     {playbackReel.commentsCount || 0}
                   </span>

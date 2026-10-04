@@ -1,73 +1,72 @@
 import React from 'react';
-import { FeedTab } from '../types';
-import { GediOnLogoIcon } from './GediOnLogoIcon';
-import { AuthUser } from '../utils/authStorage';
+import { Plus, Heart } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 interface TopHeaderProps {
-  currentFeedTab?: FeedTab;
-  onSelectFeedTab?: (tab: FeedTab) => void;
+  onOpenCreate?: () => void;
   onOpenActivity?: () => void;
-  onOpenNotifications?: () => void;
-  onOpenAuth?: () => void;
-  currentUser?: AuthUser | null;
-  hasUnreadNotifications?: boolean;
-  isRefreshing?: boolean;
+  hasUnreadActivity?: boolean;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
-  currentFeedTab = 'forYou',
-  onSelectFeedTab,
-  isRefreshing = false,
+  onOpenCreate,
+  onOpenActivity,
+  hasUnreadActivity = false,
 }) => {
+  const { isDark } = useTheme();
+
   return (
-    <header className="relative z-40 w-full h-12 px-4 select-none flex items-center pointer-events-auto">
-      <div className="flex items-center justify-between w-full">
-        {/* Left: GediOn App Logo & Name Branding */}
-        <div className="flex items-center space-x-2 shrink-0">
-          <GediOnLogoIcon size={26} showGlow={false} />
-          <span className="text-base font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-purple-400 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-            GediOn
-          </span>
-          {isRefreshing && (
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping ml-0.5 shrink-0" />
+    <header
+      className={`sticky top-0 z-40 w-full h-[50px] px-4 flex items-center justify-between border-b transition-colors select-none ${
+        isDark
+          ? 'bg-black border-[#262626] text-white'
+          : 'bg-white border-[#efefef] text-black shadow-xs'
+      }`}
+    >
+      {/* Left: Simple '+' icon (triggers upload/create modal) */}
+      <div className="flex items-center w-12">
+        <button
+          type="button"
+          onClick={onOpenCreate}
+          aria-label="Create Post or Reel"
+          className={`p-1.5 -ml-1.5 rounded-full transition-transform active:scale-90 hover:opacity-75 ${
+            isDark ? 'text-white' : 'text-black'
+          }`}
+        >
+          <Plus size={24} strokeWidth={2.2} />
+        </button>
+      </div>
+
+      {/* Center: Sleek brand title "GediOn" styled in classic Instagram script typography */}
+      <div className="flex items-center justify-center flex-1">
+        <h1
+          className={`font-script text-[32px] font-normal leading-none pt-1 tracking-normal transition-colors cursor-pointer select-none ${
+            isDark ? 'text-white' : 'text-zinc-950'
+          }`}
+        >
+          GediOn
+        </h1>
+      </div>
+
+      {/* Right: Notification Heart icon '❤️' (opens activity/alerts) */}
+      <div className="flex items-center justify-end w-12">
+        <button
+          type="button"
+          onClick={onOpenActivity}
+          aria-label="Activity and Notifications"
+          className={`relative p-1.5 -mr-1.5 rounded-full transition-transform active:scale-90 hover:opacity-75 ${
+            isDark ? 'text-white' : 'text-black'
+          }`}
+        >
+          <Heart size={24} strokeWidth={2} />
+          {hasUnreadActivity && (
+            <span
+              className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ${
+                isDark ? 'ring-black' : 'ring-white'
+              }`}
+            />
           )}
-        </div>
-
-        {/* Center / Right-aligned balance: "Following | For You" Feed Toggle Tabs */}
-        <div className="flex items-center space-x-3.5 text-xs font-bold shrink-0">
-          <button
-            type="button"
-            onClick={() => onSelectFeedTab?.('following')}
-            className={`relative py-1 transition-colors ${
-              currentFeedTab === 'following'
-                ? 'text-white font-extrabold'
-                : 'text-white/45 hover:text-white/75'
-            }`}
-          >
-            Following
-            {currentFeedTab === 'following' && (
-              <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400 to-fuchsia-500 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.7)]" />
-            )}
-          </button>
-          <span className="text-white/20 select-none">|</span>
-          <button
-            type="button"
-            onClick={() => onSelectFeedTab?.('forYou')}
-            className={`relative py-1 transition-colors ${
-              currentFeedTab === 'forYou'
-                ? 'text-white font-extrabold'
-                : 'text-white/45 hover:text-white/75'
-            }`}
-          >
-            For You
-            {currentFeedTab === 'forYou' && (
-              <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400 to-fuchsia-500 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.7)]" />
-            )}
-          </button>
-        </div>
-
-        {/* Right: Completely Clean (Empty / No action icons) */}
-        <div className="w-6 shrink-0" />
+        </button>
       </div>
     </header>
   );

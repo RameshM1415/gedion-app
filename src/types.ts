@@ -39,7 +39,7 @@ export interface Reel {
 }
 
 export type FeedTab = 'following' | 'forYou';
-export type NavTab = 'home' | 'explore' | 'create' | 'messages' | 'activity' | 'profile';
+export type NavTab = 'home' | 'reels' | 'create' | 'messages' | 'activity' | 'profile' | 'explore';
 
 export interface ChatMessage {
   id: string;

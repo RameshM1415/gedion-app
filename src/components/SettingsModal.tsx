@@ -5,7 +5,6 @@ import {
   Lock,
   Bell,
   Volume2,
-  Database,
   Trash2,
   HelpCircle,
   LogOut,
@@ -15,10 +14,12 @@ import {
   Mail,
   User,
   ExternalLink,
-  Sparkles,
   PlayCircle,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { AuthUser, clearStoredAuth, DEFAULT_AUTH_USER } from '../utils/authStorage';
+import { useTheme } from '../context/ThemeContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -37,6 +38,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onOpenOnboardingVideo,
   currentUser,
 }) => {
+  const { theme, setTheme, isDark } = useTheme();
+
   // Settings toggle states
   const [isPrivateAccount, setIsPrivateAccount] = useState(false);
   const [isPauseNotifications, setIsPauseNotifications] = useState(false);
@@ -66,49 +69,131 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: '100%' }}
       transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-      className="fixed inset-0 z-[80] flex flex-col bg-[#07070b] text-white"
+      className={`fixed inset-0 z-[80] flex flex-col transition-colors select-none ${
+        isDark ? 'bg-black text-white' : 'bg-white text-black'
+      }`}
     >
       {/* Sticky Top Bar with centered title */}
-      <div className="sticky top-0 z-20 shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-white/10 bg-[#07070b]/95 backdrop-blur-xl">
+      <div
+        className={`sticky top-0 z-20 shrink-0 flex items-center justify-between px-4 py-3.5 border-b transition-colors ${
+          isDark ? 'bg-black/95 border-[#262626]' : 'bg-white/95 border-[#efefef]'
+        }`}
+      >
         <button
           type="button"
           onClick={onClose}
           aria-label="Back"
-          className="flex items-center gap-1 text-white/80 hover:text-white p-1 rounded-full active:scale-95 transition-all"
+          className="flex items-center gap-1 p-1 rounded-full active:scale-95 transition-all opacity-85 hover:opacity-100"
         >
           <ArrowLeft size={22} />
         </button>
-        <h2 className="text-base font-bold text-white tracking-tight">Settings</h2>
-        <div className="w-8" /> {/* Spacer to balance back button */}
+        <h2 className="text-base font-bold tracking-tight">Settings</h2>
+        <div className="w-8" />
       </div>
 
       {/* Settings list container */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 pb-28 no-scrollbar">
+        {/* Section: Appearance & Theme Engine */}
+        <div className="space-y-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 px-1">
+            Appearance & Theme
+          </p>
+
+          <div
+            className={`rounded-2xl border divide-y overflow-hidden transition-colors ${
+              isDark
+                ? 'bg-zinc-950 border-[#262626] divide-[#262626]'
+                : 'bg-white border-[#efefef] divide-[#efefef]'
+            }`}
+          >
+            {/* Theme Selection */}
+            <div className="p-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                    isDark ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-900'
+                  }`}
+                >
+                  {isDark ? <Moon size={18} /> : <Sun size={18} />}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Theme Mode</p>
+                  <p className="text-[11px] text-zinc-500">
+                    {isDark ? 'VIP Dark Mode (OLED Pure Black)' : 'Light Mode (Crisp White)'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Segmented Pill Selector for Light / Dark */}
+              <div
+                className={`flex items-center p-1 rounded-full border ${
+                  isDark ? 'bg-zinc-900 border-[#262626]' : 'bg-zinc-100 border-[#efefef]'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTheme('light');
+                    onShowToast('Light Mode activated ☀️');
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                    !isDark
+                      ? 'bg-white text-black shadow-xs'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Sun size={13} />
+                  <span>Light</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTheme('dark');
+                    onShowToast('VIP Dark Mode activated 🌙');
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                    isDark
+                      ? 'bg-black text-white shadow-xs border border-zinc-800'
+                      : 'text-zinc-500 hover:text-black'
+                  }`}
+                >
+                  <Moon size={13} />
+                  <span>VIP Dark</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Section: Account & Authentication */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-cyan-400">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
               Account & Authentication
             </p>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
               <Check size={11} />
               <span>Active Session</span>
             </span>
           </div>
 
-          <div className="rounded-2xl bg-gradient-to-b from-cyan-950/30 via-white/[0.04] to-purple-950/20 border border-cyan-500/30 p-4 space-y-3 shadow-[0_0_25px_rgba(6,182,212,0.15)]">
+          <div
+            className={`rounded-2xl border p-4 space-y-3 transition-colors ${
+              isDark ? 'bg-zinc-950 border-[#262626]' : 'bg-white border-[#efefef]'
+            }`}
+          >
             {/* User Profile Card */}
             <div className="flex items-center gap-3">
               <img
                 src={user.avatar}
                 alt={user.displayName}
-                className="h-12 w-12 rounded-full object-cover border-2 border-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.4)] shrink-0"
+                className="h-12 w-12 rounded-full object-cover border border-zinc-500/30 shrink-0"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="text-sm font-bold text-white truncate">{user.displayName}</p>
+                  <p className="text-sm font-bold truncate">{user.displayName}</p>
                   {user.provider === 'google' ? (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/40">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20">
                       <svg className="w-2.5 h-2.5" viewBox="0 0 24 24">
                         <path
                           fill="#4285F4"
@@ -127,56 +212,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.6 1.24 6.58l4.04 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                         />
                       </svg>
-                      <span>Google Verified</span>
+                      <span>Google</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/40">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-zinc-500/10 text-zinc-400 border border-zinc-500/20">
                       <Mail size={10} />
-                      <span>Email OTP Verified</span>
+                      <span>Email OTP</span>
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-white/60 font-mono truncate">{user.email}</p>
-                <p className="text-[10px] text-white/40 font-mono mt-0.5">@{user.username}</p>
+                <p className="text-xs text-zinc-500 truncate">{user.email}</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">@{user.username}</p>
               </div>
             </div>
 
-            {/* Quick Switch / Re-login action */}
+            {/* Quick Switch action */}
             <div className="space-y-2 pt-1">
-              {onOpenOnboardingVideo && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenOnboardingVideo();
-                  }}
-                  className="w-full py-2.5 px-3 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-400/40 text-cyan-200 text-xs font-bold active:scale-98 transition-all flex items-center justify-between gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
-                >
-                  <div className="flex items-center gap-2">
-                    <PlayCircle size={15} className="text-cyan-400 animate-pulse" />
-                    <span>Creator Welcome & Earnings Guide</span>
-                  </div>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                      user.hasCompletedOnboarding || user.hasCompletedDemoVideo
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
-                        : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
-                    }`}
-                  >
-                    {user.hasCompletedOnboarding || user.hasCompletedDemoVideo ? 'Completed ✓' : 'Watch Required'}
-                  </span>
-                </button>
-              )}
-
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   onOpenAuthModal?.();
                 }}
-                className="w-full py-2.5 px-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white/80 hover:text-white text-xs font-semibold active:scale-98 transition-all flex items-center justify-center gap-1.5"
+                className={`w-full py-2.5 px-3 rounded-xl border text-xs font-semibold active:scale-98 transition-all flex items-center justify-center gap-1.5 ${
+                  isDark
+                    ? 'bg-zinc-900 hover:bg-zinc-800 border-[#262626] text-white'
+                    : 'bg-zinc-100 hover:bg-zinc-200 border-[#efefef] text-black'
+                }`}
               >
-                <Sparkles size={14} className="text-cyan-400" />
                 <span>Switch Account / Sign In with Another Profile</span>
               </button>
             </div>
@@ -185,20 +248,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Section: Account & Privacy */}
         <div className="space-y-3">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 px-1">
             Account & Privacy
           </p>
 
-          <div className="rounded-2xl bg-white/[0.04] border border-white/10 divide-y divide-white/5 overflow-hidden">
+          <div
+            className={`rounded-2xl border divide-y overflow-hidden transition-colors ${
+              isDark
+                ? 'bg-zinc-950 border-[#262626] divide-[#262626]'
+                : 'bg-white border-[#efefef] divide-[#efefef]'
+            }`}
+          >
             {/* Account Privacy Toggle */}
             <div className="flex items-center justify-between p-3.5">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/15 text-purple-400">
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                    isDark ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-900'
+                  }`}
+                >
                   <Lock size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">Private Account</p>
-                  <p className="text-[11px] text-white/50">
+                  <p className="text-sm font-semibold">Private Account</p>
+                  <p className="text-[11px] text-zinc-500">
                     {isPrivateAccount
                       ? 'Only approved followers can view your reels'
                       : 'Anyone on GediOn can see your reels'}
@@ -215,7 +288,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onShowToast(next ? 'Account set to Private' : 'Account set to Public');
                 }}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  isPrivateAccount ? 'bg-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.6)]' : 'bg-white/20'
+                  isPrivateAccount ? 'bg-[#0095f6]' : isDark ? 'bg-zinc-800' : 'bg-zinc-300'
                 }`}
               >
                 <span
@@ -230,20 +303,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Section: Notifications */}
         <div className="space-y-3">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 px-1">
             Notifications
           </p>
 
-          <div className="rounded-2xl bg-white/[0.04] border border-white/10 divide-y divide-white/5 overflow-hidden">
+          <div
+            className={`rounded-2xl border divide-y overflow-hidden transition-colors ${
+              isDark
+                ? 'bg-zinc-950 border-[#262626] divide-[#262626]'
+                : 'bg-white border-[#efefef] divide-[#efefef]'
+            }`}
+          >
             {/* Pause All Toggle */}
             <div className="flex items-center justify-between p-3.5">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-400">
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                    isDark ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-900'
+                  }`}
+                >
                   <Bell size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">Pause All Notifications</p>
-                  <p className="text-[11px] text-white/50">Temporarily mute push alerts</p>
+                  <p className="text-sm font-semibold">Pause All Notifications</p>
+                  <p className="text-[11px] text-zinc-500">Temporarily mute push alerts</p>
                 </div>
               </div>
               <button
@@ -256,7 +339,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onShowToast(next ? 'Notifications paused' : 'Notifications unpaused');
                 }}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  isPauseNotifications ? 'bg-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.6)]' : 'bg-white/20'
+                  isPauseNotifications ? 'bg-[#0095f6]' : isDark ? 'bg-zinc-800' : 'bg-zinc-300'
                 }`}
               >
                 <span
@@ -266,123 +349,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 />
               </button>
             </div>
-
-            {/* Sound Alerts Toggle */}
-            <div className="flex items-center justify-between p-3.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-pink-500/15 text-pink-400">
-                  <Volume2 size={18} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Sound Alerts</p>
-                  <p className="text-[11px] text-white/50">Play chime on likes and replies</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isSoundAlerts}
-                onClick={() => {
-                  const next = !isSoundAlerts;
-                  setIsSoundAlerts(next);
-                  onShowToast(next ? 'Sound alerts enabled' : 'Sound alerts muted');
-                }}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  isSoundAlerts ? 'bg-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.6)]' : 'bg-white/20'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    isSoundAlerts ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
           </div>
         </div>
 
         {/* Section: Data & Storage */}
         <div className="space-y-3">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">
-            Data & Cache
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 px-1">
+            Data & Storage
           </p>
 
-          <div className="rounded-2xl bg-white/[0.04] border border-white/10 divide-y divide-white/5 overflow-hidden">
-            {/* Data Saver Toggle */}
-            <div className="flex items-center justify-between p-3.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
-                  <Database size={18} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Data Saver</p>
-                  <p className="text-[11px] text-white/50">Reduce cellular data usage for reels</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isDataSaver}
-                onClick={() => {
-                  const next = !isDataSaver;
-                  setIsDataSaver(next);
-                  onShowToast(next ? 'Data saver turned on' : 'Data saver turned off');
-                }}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  isDataSaver ? 'bg-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.6)]' : 'bg-white/20'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    isDataSaver ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-
-            {/* Clear Cache Button */}
-            <button
-              type="button"
+          <div
+            className={`rounded-2xl border divide-y overflow-hidden transition-colors ${
+              isDark
+                ? 'bg-zinc-950 border-[#262626] divide-[#262626]'
+                : 'bg-white border-[#efefef] divide-[#efefef]'
+            }`}
+          >
+            <div
               onClick={handleClearCache}
-              className="w-full flex items-center justify-between p-3.5 hover:bg-white/[0.04] active:bg-white/[0.08] transition-colors text-left"
+              className={`flex items-center justify-between p-3.5 cursor-pointer transition-colors ${
+                isDark ? 'hover:bg-zinc-900' : 'hover:bg-zinc-50'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                    isDark ? 'bg-zinc-900 text-zinc-300' : 'bg-zinc-100 text-zinc-700'
+                  }`}
+                >
                   <Trash2 size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">Clear Cache</p>
-                  <p className="text-[11px] text-white/50">Frees up device storage instantly</p>
+                  <p className="text-sm font-semibold">Clear Media Cache</p>
+                  <p className="text-[11px] text-zinc-500">Free up local browser storage</p>
                 </div>
               </div>
-              <span className="text-xs font-semibold text-white/40">Free up</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Section: Support & Community */}
-        <div className="space-y-3">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">
-            Community & Legal
-          </p>
-
-          <div className="rounded-2xl bg-white/[0.04] border border-white/10 divide-y divide-white/5 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => onShowToast('Community Guidelines & Safety: In Good Standing ✓')}
-              className="w-full flex items-center justify-between p-3.5 hover:bg-white/[0.04] active:bg-white/[0.08] transition-colors text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/15 text-blue-400">
-                  <ShieldCheck size={18} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Community Guidelines & Help</p>
-                  <p className="text-[11px] text-white/50">Safety guidelines and creator terms</p>
-                </div>
-              </div>
-              <ChevronRight size={18} className="text-white/30" />
-            </button>
+              <ChevronRight size={18} className="text-zinc-500" />
+            </div>
           </div>
         </div>
 
@@ -391,14 +394,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={handleLogOut}
-            className="w-full py-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/30 text-rose-400 font-semibold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/30 text-rose-500 text-sm font-bold flex items-center justify-center gap-2 active:scale-98 transition-all"
           >
             <LogOut size={16} />
-            <span>Log Out</span>
+            <span>Log Out of GediOn</span>
           </button>
-
-          <p className="text-center text-[11px] text-white/30 mt-4">
-            GediOn Ultra v1.2.0 • Build Asia-East1
+          <p className="text-center text-[10px] text-zinc-500 mt-3 font-mono">
+            GediOn Instagram Edition v2.0 • Supabase & Cloudinary Active
           </p>
         </div>
       </div>

@@ -38,7 +38,7 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
       <div className="relative mb-2 flex flex-col items-center pointer-events-auto">
         <motion.div
           whileTap={{ scale: 0.9 }}
-          className="relative h-12 w-12 rounded-full p-[2px] bg-gradient-to-tr from-purple-500 via-pink-500 to-cyan-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+          className="relative h-12 w-12 rounded-full p-[2px] bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888]"
         >
           <img
             src={reel.avatar}
@@ -62,19 +62,19 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
           aria-label={reel.isFollowing ? 'Following creator' : 'Follow creator'}
           className={`absolute -bottom-2 z-50 pointer-events-auto cursor-pointer flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300 shadow-md ${
             reel.isFollowing
-              ? 'bg-cyan-400 text-black border border-cyan-200 shadow-[0_0_15px_rgba(6,182,212,1)]'
-              : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-[0_0_10px_rgba(236,72,153,0.6)]'
+              ? 'bg-[#0095f6] text-white border-2 border-black'
+              : 'bg-[#0095f6] text-white'
           }`}
         >
           {reel.isFollowing ? (
-            <span className="text-[12px] font-black leading-none text-black select-none">✓</span>
+            <span className="text-[11px] font-black leading-none text-white select-none">✓</span>
           ) : (
             <Plus size={13} strokeWidth={3.5} />
           )}
         </motion.button>
       </div>
 
-      {/* Dil (Heart) Like Button - High Z-Index & Direct Clickable with Optimistic Neon #ff0055 */}
+      {/* Dil (Heart) Like Button */}
       <div className="relative z-50 pointer-events-auto flex flex-col items-center">
         <motion.button
           type="button"
@@ -91,7 +91,7 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
           aria-pressed={reel.isLiked}
           className={`group relative z-50 pointer-events-auto cursor-pointer flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-md border transition-all duration-200 ${
             reel.isLiked
-              ? 'bg-[#ff0055]/20 border-[#ff0055]/60 shadow-[0_0_20px_rgba(255,0,85,0.55)]'
+              ? 'bg-rose-500/20 border-rose-500/50'
               : 'bg-black/35 border-white/15 hover:bg-black/55'
           }`}
         >
@@ -103,12 +103,12 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
           >
             <Heart
               size={26}
-              fill={reel.isLiked ? '#ff0055' : 'none'}
-              color={reel.isLiked ? '#ff0055' : '#ffffff'}
+              fill={reel.isLiked ? '#ff3040' : 'none'}
+              color={reel.isLiked ? '#ff3040' : '#ffffff'}
               strokeWidth={reel.isLiked ? 2.5 : 2}
               className={`pointer-events-none transition-all duration-200 ${
                 reel.isLiked
-                  ? 'fill-[#ff0055] text-[#ff0055] drop-shadow-[0_0_14px_#ff0055] drop-shadow-[0_0_28px_#ff0055]'
+                  ? 'fill-[#ff3040] text-[#ff3040]'
                   : 'fill-transparent text-white group-hover:text-white'
               }`}
             />
@@ -121,7 +121,7 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
             onToggleLike(e);
           }}
           className={`mt-1 text-xs font-bold tracking-tight cursor-pointer pointer-events-auto transition-colors drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] ${
-            reel.isLiked ? 'text-[#ff0055] drop-shadow-[0_0_8px_#ff0055]' : 'text-white/95'
+            reel.isLiked ? 'text-[#ff3040]' : 'text-white/95'
           }`}
         >
           {formatCount(reel.likesCount)}
@@ -203,7 +203,7 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
             whileTap={{ scale: 0.8 }}
             whileHover={{ scale: 1.1 }}
             aria-label="Reel options"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white/70 hover:text-cyan-400 hover:border-cyan-400/40 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:border-white/30 transition-colors"
           >
             <MoreVertical size={18} />
           </motion.button>
@@ -215,9 +215,9 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
         {/* Equalizer animation waves */}
         {isPlaying && (
           <div className="absolute -top-4 flex items-end justify-center gap-[3px] h-4">
-            <span className="w-[3px] rounded-full bg-cyan-400 animate-bar-1" />
-            <span className="w-[3px] rounded-full bg-purple-400 animate-bar-2" />
-            <span className="w-[3px] rounded-full bg-pink-400 animate-bar-3" />
+            <span className="w-[3px] rounded-full bg-white animate-bar-1" />
+            <span className="w-[3px] rounded-full bg-white/80 animate-bar-2" />
+            <span className="w-[3px] rounded-full bg-white/60 animate-bar-3" />
           </div>
         )}
 

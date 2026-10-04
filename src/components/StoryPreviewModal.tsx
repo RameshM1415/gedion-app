@@ -222,8 +222,8 @@ export const StoryPreviewModal: React.FC<StoryPreviewModalProps> = ({
             {/* Creator Info Row */}
             <div className="flex items-center justify-between pointer-events-auto">
               <div className="flex items-center gap-2.5">
-                {/* Glowing Circular Avatar */}
-                <div className="relative h-9 w-9 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-purple-500 to-pink-500">
+                {/* Instagram Gradient Ring Avatar */}
+                <div className="relative h-9 w-9 rounded-full p-[1.5px] bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888]">
                   <img
                     src={currentStory.avatar}
                     alt={currentStory.username}
@@ -237,7 +237,7 @@ export const StoryPreviewModal: React.FC<StoryPreviewModalProps> = ({
                       {currentStory.username}
                     </span>
                     {currentStory.isVerified && (
-                      <CheckCircle2 size={13} className="text-cyan-400 fill-cyan-400" />
+                      <CheckCircle2 size={13} className="text-[#0095f6] fill-[#0095f6]" />
                     )}
                   </div>
                   <span className="text-[10.5px] font-medium text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
@@ -285,7 +285,7 @@ export const StoryPreviewModal: React.FC<StoryPreviewModalProps> = ({
               <button
                 type="submit"
                 disabled={!replyText.trim()}
-                className="absolute right-2 flex h-7 w-7 items-center justify-center rounded-full text-cyan-400 disabled:opacity-40 disabled:text-white/40 active:scale-95"
+                className="absolute right-2 flex h-7 w-7 items-center justify-center rounded-full text-[#0095f6] disabled:opacity-40 disabled:text-white/40 active:scale-95"
                 aria-label="Send reply"
               >
                 <Send size={15} />

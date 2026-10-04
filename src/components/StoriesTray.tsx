@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 import { StoryItem } from '../types';
 import { USER_STORY_PROFILE } from '../data/mockStories';
+import { useTheme } from '../context/ThemeContext';
 
 interface StoriesTrayProps {
   stories: StoryItem[];
@@ -18,59 +19,87 @@ export const StoriesTray: React.FC<StoriesTrayProps> = ({
   userAvatar,
   hasUserStory = false,
 }) => {
+  const { isDark } = useTheme();
   const displayAvatar = userAvatar || USER_STORY_PROFILE.avatar;
 
   return (
-    <div className="w-full bg-transparent overflow-hidden select-none pointer-events-auto">
-      {/* Horizontal smooth scrolling row: Exactly 5 bubbles (Your story + 4 friends) fit comfortably across mobile screen */}
-      <div className="flex items-center gap-2 px-2.5 py-1 overflow-x-auto no-scrollbar scroll-smooth">
-        {/* 1. First Item: "Your story" with '+' badge */}
+    <div
+      className={`w-full py-2.5 border-b select-none transition-colors ${
+        isDark ? 'bg-black border-[#262626]' : 'bg-white border-[#efefef]'
+      }`}
+    >
+      {/* Horizontal scrolling row of story avatars */}
+      <div className="flex items-center gap-3.5 px-3.5 overflow-x-auto no-scrollbar scroll-smooth">
+        {/* 1. First Item: "Your story" with clean blue '+' overlay badge */}
         <button
           type="button"
           onClick={onOpenYourStory}
-          className="group flex flex-col items-center shrink-0 w-[58px] focus:outline-none active:scale-95 transition-transform"
+          className="group flex flex-col items-center shrink-0 w-[66px] focus:outline-none active:scale-95 transition-transform cursor-pointer"
           aria-label="Add to your story"
         >
-          {/* Avatar Container ~50px diameter */}
-          <div
-            className={`relative w-[50px] h-[50px] rounded-full p-[2px] transition-all ${
-              hasUserStory
-                ? 'bg-gradient-to-tr from-cyan-400 via-purple-500 to-pink-500 animate-story-glow shadow-md'
-                : 'bg-white/20 group-hover:bg-white/40'
-            }`}
-          >
-            <div className="w-full h-full rounded-full p-[1.5px] bg-black/80 overflow-hidden">
-              <img
-                src={displayAvatar}
-                alt="Your story"
-                className="w-full h-full rounded-full object-cover shadow-md"
-              />
+          {/* Avatar Container ~62px diameter */}
+          <div className="relative">
+            <div
+              className={`w-[62px] h-[62px] rounded-full p-[2.5px] transition-all ${
+                hasUserStory
+                  ? 'bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888]'
+                  : isDark
+                  ? 'bg-zinc-800'
+                  : 'bg-zinc-200'
+              }`}
+            >
+              <div
+                className={`w-full h-full rounded-full p-[2px] overflow-hidden ${
+                  isDark ? 'bg-black' : 'bg-white'
+                }`}
+              >
+                <img
+                  src={displayAvatar}
+                  alt="Your story"
+                  className="w-full h-full rounded-full object-cover"
+                />
+              </div>
             </div>
-            {/* Small '+' badge at the bottom-right */}
-            <div className="absolute -bottom-0.5 -right-0.5 flex h-[16px] w-[16px] items-center justify-center rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 border-2 border-black text-white shadow-md">
-              <Plus size={10} strokeWidth={3.5} />
-            </div>
+
+            {/* Clean Blue '+' overlay badge at bottom-right */}
+            {!hasUserStory && (
+              <div
+                className={`absolute bottom-0 right-0 flex h-[20px] w-[20px] items-center justify-center rounded-full bg-[#0095f6] text-white shadow-xs border-2 ${
+                  isDark ? 'border-black' : 'border-white'
+                }`}
+              >
+                <Plus size={12} strokeWidth={3.5} />
+              </div>
+            )}
           </div>
 
-          {/* Subtitle below */}
-          <span className="mt-1 text-[10.5px] font-medium text-white/95 text-center truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] max-w-[58px] tracking-tight">
+          {/* Subtitle */}
+          <span
+            className={`mt-1.5 text-[11px] font-normal truncate max-w-[66px] tracking-tight ${
+              isDark ? 'text-zinc-300' : 'text-zinc-700'
+            }`}
+          >
             Your story
           </span>
         </button>
 
-        {/* 2. Friends / Creator Stories with Glowing Neon Gradient Ring */}
+        {/* 2. Friend stories with signature Instagram gradient ring */}
         {stories.map((story, index) => (
           <button
             key={story.id}
             type="button"
             onClick={() => onSelectStory(index)}
-            className="group flex flex-col items-center shrink-0 w-[58px] focus:outline-none active:scale-95 transition-transform"
+            className="group flex flex-col items-center shrink-0 w-[66px] focus:outline-none active:scale-95 transition-transform cursor-pointer"
             aria-label={`View story by ${story.username}`}
           >
-            {/* Outer ring: Glowing neon gradient border */}
-            <div className="relative w-[50px] h-[50px] rounded-full p-[2px] bg-gradient-to-tr from-cyan-400 via-purple-500 to-pink-500 animate-story-glow shadow-md">
-              {/* Inner dark gap ring */}
-              <div className="w-full h-full rounded-full p-[1.5px] bg-black/80">
+            {/* Outer Ring: Signature Instagram gradient (yellow, red/pink, purple) */}
+            <div className="w-[62px] h-[62px] rounded-full p-[2.5px] bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888]">
+              {/* Inner gap ring */}
+              <div
+                className={`w-full h-full rounded-full p-[2px] ${
+                  isDark ? 'bg-black' : 'bg-white'
+                }`}
+              >
                 <img
                   src={story.avatar}
                   alt={story.username}
@@ -81,7 +110,11 @@ export const StoriesTray: React.FC<StoriesTrayProps> = ({
             </div>
 
             {/* Subtitle below each avatar */}
-            <span className="mt-1 text-[10.5px] font-medium text-white text-center truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] max-w-[58px] tracking-tight">
+            <span
+              className={`mt-1.5 text-[11px] font-normal truncate max-w-[66px] tracking-tight ${
+                isDark ? 'text-zinc-200' : 'text-zinc-800'
+              }`}
+            >
               {story.username}
             </span>
           </button>

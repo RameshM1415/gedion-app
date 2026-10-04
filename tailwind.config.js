@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,17 +8,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        darkBg: "#050505",
+        darkBg: "#000000",
         surface: "#0e0e11",
         surfaceCard: "#16161d",
-        neonViolet: "#9333ea",
-        neonPurple: "#a855f7",
-        neonCyan: "#06b6d4",
-        neonPink: "#ec4899",
+        igBorder: {
+          light: "#efefef",
+          dark: "#262626",
+        },
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
         display: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        script: ['"Grand Hotel"', 'cursive', 'system-ui'],
       },
       animation: {
         'spin-slow': 'spin 5s linear infinite',

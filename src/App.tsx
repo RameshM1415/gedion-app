@@ -11,6 +11,8 @@ import { MOCK_STORIES } from './data/mockStories';
 import { StoryItem } from './types';
 import { BottomNav } from './components/BottomNav';
 import { ReelsFeed } from './components/ReelsFeed';
+import { InstagramFeed } from './components/InstagramFeed';
+import { ReelOptionsMenu } from './components/ReelOptionsMenu';
 import { CommentDrawer } from './components/CommentDrawer';
 import { ShareSheet } from './components/ShareSheet';
 import { ReportModal } from './components/ReportModal';
@@ -21,7 +23,8 @@ import { AuthModal } from './components/AuthModal';
 import { OnboardingVideoModal } from './components/OnboardingVideoModal';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { VideoUploadModal } from './components/VideoUploadModal';
-import { supabase, fetchSupabaseReels } from './utils/supabaseClient';
+import { supabase, fetchSupabaseReels, deleteReelFromSupabase } from './utils/supabaseClient';
+import { useTheme } from './context/ThemeContext';
 import {
   AuthUser,
   getStoredAuth,
@@ -67,6 +70,7 @@ const getInitialReels = (): Reel[] => {
 };
 
 export const App: React.FC = () => {
+  const { isDark } = useTheme();
   const [reels, setReels] = useState<Reel[]>(getInitialReels);
   const [feedTab, setFeedTab] = useState<FeedTab>('forYou');
   const [navTab, setNavTab] = useState<NavTab>('home');
@@ -76,6 +80,12 @@ export const App: React.FC = () => {
   const [chatTargetUser, setChatTargetUser] = useState<string | null>(null);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  // Options Menu & Deletion State
+  const [optionsReel, setOptionsReel] = useState<Reel | null>(null);
+  const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
+  const [deleteToast, setDeleteToast] = useState<string | null>(null);
+  const [feedToast, setFeedToast] = useState<string | null>(null);
 
   // Authentication State & Session Persistence (Supabase Auth)
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
@@ -239,6 +249,68 @@ export const App: React.FC = () => {
   const handleUpdateReel = (updated: Reel) => {
     setReels((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
   };
+
+  const handleToggleLike = useCallback((reelId: string) => {
+    setReels((prev) =>
+      prev.map((r) => {
+        if (r.id === reelId) {
+          const nextLiked = !r.isLiked;
+          const nextCount = nextLiked ? (r.likesCount || 0) + 1 : Math.max(0, (r.likesCount || 0) - 1);
+          return { ...r, isLiked: nextLiked, likesCount: nextCount };
+        }
+        return r;
+      })
+    );
+  }, []);
+
+  const handleToggleBookmark = useCallback((reelId: string) => {
+    setReels((prev) =>
+      prev.map((r) => (r.id === reelId ? { ...r, isBookmarked: !r.isBookmarked } : r))
+    );
+  }, []);
+
+  const handleOpenOptions = useCallback((reel: Reel) => {
+    setCommentReelId(null);
+    setShareReelId(null);
+    setOptionsReel(reel);
+    setIsOptionsMenuOpen(true);
+  }, []);
+
+  const handleCloseOptions = useCallback(() => {
+    setIsOptionsMenuOpen(false);
+    setOptionsReel(null);
+  }, []);
+
+  const handleDeleteReel = useCallback(async (reelId: string) => {
+    setReels((prev) => prev.filter((r) => r.id !== reelId));
+
+    window.dispatchEvent(
+      new CustomEvent('reel-deleted', { detail: { reelId } })
+    );
+
+    setDeleteToast('Reel deleted successfully');
+    setTimeout(() => setDeleteToast(null), 3000);
+
+    setIsOptionsMenuOpen(false);
+    setOptionsReel(null);
+
+    await deleteReelFromSupabase(reelId);
+  }, []);
+
+  // Listen for reel deletion across all views
+  useEffect(() => {
+    const handleReelDeleted = (e: Event) => {
+      const customEvent = e as CustomEvent<{ reelId: string }>;
+      const deletedId = customEvent.detail?.reelId;
+      if (deletedId) {
+        setReels((prev) => prev.filter((r) => r.id !== deletedId));
+      }
+    };
+    window.addEventListener('reel-deleted', handleReelDeleted);
+    return () => {
+      window.removeEventListener('reel-deleted', handleReelDeleted);
+    };
+  }, []);
 
   const handleSelectNavTab = (tab: NavTab) => {
     if (tab === 'create') {
@@ -425,73 +497,113 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="relative flex h-[100dvh] w-screen items-center justify-center bg-[#020204] overflow-hidden">
-      {/* Initial App Launch / Splash Screen with Ambient Neon Glow Pulse */}
+    <div
+      className={`relative flex h-[100dvh] w-screen items-center justify-center overflow-hidden transition-colors ${
+        isDark ? 'bg-[#000000]' : 'bg-[#f4f4f4]'
+      }`}
+    >
+      {/* Initial App Launch / Splash Screen */}
       <AnimatePresence>
         {showSplash && (
           <SplashScreen onComplete={() => setShowSplash(false)} />
         )}
       </AnimatePresence>
 
-      {/* Ambient background glow effects for wide desktop screens */}
-      <div className="pointer-events-none absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-purple-600/15 blur-[120px]" />
-      <div className="pointer-events-none absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-cyan-600/15 blur-[120px]" />
-
-      {/* Mobile-first viewport container (9:16 aspect ratio framing with elegant bezel on desktop) */}
-      <main className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[440px] md:h-[94vh] md:max-h-[890px] md:rounded-[36px] overflow-hidden bg-black shadow-[0_0_60px_-10px_rgba(168,85,247,0.3)] md:border md:border-white/15">
-        {/* Main Feed or Secondary Tab Views (Plays 100% Edge-to-Edge Underneath) */}
+      {/* Mobile-first viewport container (Clean Instagram device frame) */}
+      <main
+        className={`relative h-[100dvh] max-h-[100dvh] w-full max-w-[440px] md:h-[94vh] md:max-h-[890px] md:rounded-[36px] overflow-hidden shadow-2xl transition-colors md:border select-none ${
+          isDark
+            ? 'bg-black text-white md:border-[#262626]'
+            : 'bg-white text-black md:border-[#efefef]'
+        }`}
+      >
+        {/* Main Tab Views */}
         <div className="relative h-full w-full overflow-hidden">
-          {feedTab === 'forYou' || displayedReels.length > 0 ? (
-            <ReelsFeed
-              reels={displayedReels}
-              isMuted={isMuted}
-              onUpdateReel={handleUpdateReel}
-              onOpenComments={handleOpenComments}
-              onOpenShare={handleOpenShare}
-              onOpenReport={handleOpenReport}
-              scrollToTopTrigger={scrollToTopTrigger}
-              onReelsLoaded={handleReelsLoaded}
-              onNewRealtimeReel={handleNewRealtimeReel}
-              currentUser={currentUser}
-              onStoriesVisibilityChange={setIsStoriesVisible}
-              onRequireAuth={(prompt) => {
-                setAuthPromptMessage(prompt);
-                setIsAuthModalOpen(true);
-              }}
-              onOpenCreateStory={() => {
-                if (!currentUser) {
-                  setAuthPromptMessage('Sign in to broadcast your reels to GediOn!');
-                  setIsAuthModalOpen(true);
-                  return;
-                }
-                setCreateMode('REEL');
-                setNavTab('create');
-              }}
-            />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-[#07070c] text-white">
-              <div className="h-16 w-16 rounded-2xl bg-cyan-500/15 border border-cyan-400/40 flex items-center justify-center text-cyan-300 mb-3 shadow-[0_0_25px_rgba(6,182,212,0.25)]">
-                <span className="text-2xl">👥</span>
-              </div>
-              <h3 className="text-sm font-black uppercase tracking-wider font-mono text-white">
-                NO CREATORS FOLLOWED YET
-              </h3>
-              <p className="text-xs text-white/50 mt-1.5 max-w-xs">
-                Switch to &quot;For You&quot; to discover live cyber creators or tap + to broadcast your own reel.
-              </p>
-              <button
-                onClick={() => setFeedTab('forYou')}
-                className="mt-4 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-fuchsia-500 text-xs font-black uppercase tracking-wider text-black shadow-[0_0_20px_rgba(6,182,212,0.6)] cursor-pointer"
-              >
-                Explore For You
-              </button>
+          {/* 1. HOME TAB (🏠): Instagram Clean Header + Stories Bar + Instagram Post Feed */}
+          {navTab === 'home' && (
+            <div className="flex flex-col h-full w-full overflow-hidden">
+              <TopHeader
+                onOpenCreate={() => {
+                  if (!currentUser) {
+                    setAuthPromptMessage('Sign in to broadcast your posts to GediOn!');
+                    setIsAuthModalOpen(true);
+                    return;
+                  }
+                  setCreateMode('REEL');
+                  setNavTab('create');
+                }}
+                onOpenActivity={() => setNavTab('activity')}
+                hasUnreadActivity={false}
+              />
+              <InstagramFeed
+                reels={displayedReels}
+                stories={stories}
+                currentUser={currentUser}
+                isMuted={isMuted}
+                onToggleMute={() => setIsMuted((prev) => !prev)}
+                onToggleLike={handleToggleLike}
+                onToggleBookmark={handleToggleBookmark}
+                onOpenComments={handleOpenComments}
+                onOpenShare={handleOpenShare}
+                onOpenOptions={handleOpenOptions}
+                onOpenYourStory={handleOpenAddStory}
+                onSelectStory={handleSelectStory}
+                onOpenCreate={() => {
+                  if (!currentUser) {
+                    setAuthPromptMessage('Sign in to broadcast your posts to GediOn!');
+                    setIsAuthModalOpen(true);
+                    return;
+                  }
+                  setCreateMode('REEL');
+                  setNavTab('create');
+                }}
+                onShowToast={(msg) => {
+                  setFeedToast(msg);
+                  setTimeout(() => setFeedToast(null), 2500);
+                }}
+              />
             </div>
           )}
 
-          {/* Secondary Views Modal Overlays */}
+          {/* 2. REELS TAB (▶️): Dedicated full-screen vertical swipe Reels player */}
+          {navTab === 'reels' && (
+            <div className="relative h-full w-full overflow-hidden bg-black text-white">
+              <ReelsFeed
+                reels={displayedReels}
+                isMuted={isMuted}
+                onUpdateReel={handleUpdateReel}
+                onOpenComments={handleOpenComments}
+                onOpenShare={handleOpenShare}
+                onOpenReport={handleOpenReport}
+                onOpenOptions={handleOpenOptions}
+                scrollToTopTrigger={scrollToTopTrigger}
+                onReelsLoaded={handleReelsLoaded}
+                onNewRealtimeReel={handleNewRealtimeReel}
+                currentUser={currentUser}
+                onStoriesVisibilityChange={() => {}}
+                onRequireAuth={(prompt) => {
+                  setAuthPromptMessage(prompt);
+                  setIsAuthModalOpen(true);
+                }}
+                onOpenCreateStory={() => {
+                  if (!currentUser) {
+                    setAuthPromptMessage('Sign in to broadcast your reels to GediOn!');
+                    setIsAuthModalOpen(true);
+                    return;
+                  }
+                  setCreateMode('REEL');
+                  setNavTab('create');
+                }}
+              />
+            </div>
+          )}
+
+          {/* 3. EXPLORE & SEARCH */}
           {navTab === 'explore' && (
             <ExploreView onClose={() => setNavTab('home')} reels={reels} />
           )}
+
+          {/* 4. CREATE / RECORD */}
           {navTab === 'create' && (
             <VideoUploadModal
               isOpen={navTab === 'create'}
@@ -500,6 +612,8 @@ export const App: React.FC = () => {
               currentUser={currentUser}
             />
           )}
+
+          {/* 5. DIRECT MESSAGES */}
           {navTab === 'messages' && (
             <ChatView
               onClose={() => setNavTab('home')}
@@ -507,6 +621,8 @@ export const App: React.FC = () => {
               onClearInitialUser={() => setChatTargetUser(null)}
             />
           )}
+
+          {/* 6. ACTIVITY / NOTIFICATIONS */}
           {navTab === 'activity' && (
             <ActivityView
               onClose={() => setNavTab('home')}
@@ -517,6 +633,8 @@ export const App: React.FC = () => {
               }}
             />
           )}
+
+          {/* 7. PROFILE */}
           {navTab === 'profile' && (
             <ProfileScreen
               onClose={() => setNavTab('home')}
@@ -537,53 +655,19 @@ export const App: React.FC = () => {
               }}
               onOpenOnboardingVideo={() => setIsOnboardingVideoOpen(true)}
               onSignOut={handleSignOut}
+              onDeleteReel={handleDeleteReel}
               currentUser={currentUser}
             />
           )}
         </div>
 
-        {/* Transparent & Fullscreen Top Overlay for Header & Stories Tray */}
-        {navTab === 'home' && (
-          <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none flex flex-col bg-gradient-to-b from-black/80 via-black/35 to-transparent pb-3 pt-1">
-            <TopHeader
-              currentFeedTab={feedTab}
-              onSelectFeedTab={(tab) => setFeedTab(tab)}
-              onOpenActivity={() => setNavTab('activity')}
-              onOpenNotifications={() => setNavTab('activity')}
-              onOpenAuth={() => setIsAuthModalOpen(true)}
-              currentUser={currentUser}
-              hasUnreadNotifications={false}
-              isRefreshing={isRefreshing}
-            />
-
-            {/* Stories Tray with Smooth Auto-Hide & Reveal on Scroll */}
-            <div
-              className={`w-full overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                isStoriesVisible
-                  ? 'max-h-[96px] opacity-100 translate-y-0 pointer-events-auto'
-                  : 'max-h-0 opacity-0 -translate-y-full pointer-events-none'
-              }`}
-            >
-              <div className="w-full px-2 py-0.5 bg-transparent">
-                <StoriesTray
-                  stories={stories}
-                  onOpenYourStory={handleOpenAddStory}
-                  onSelectStory={handleSelectStory}
-                  userAvatar={currentUser?.avatar}
-                  hasUserStory={stories.some((s) => s.username === (currentUser?.username || 'you'))}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* PWA 1-Tap App Install Prompt Banner / Bottom Drawer */}
+        {/* PWA 1-Tap App Install Prompt Banner */}
         <PwaInstallBanner
           deferredPrompt={deferredPrompt}
           isModalOpen={isSheetOpen || isCreateOpen || isEditProfileOpen || isOnboardingVideoOpen || isAuthModalOpen}
         />
 
-        {/* Floating Toast upon successfully publishing a new Reel */}
+        {/* Toast Notifications */}
         <AnimatePresence>
           {showPublishToast && (
             <motion.div
@@ -591,13 +675,63 @@ export const App: React.FC = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -15, scale: 0.95 }}
               transition={{ duration: 0.25 }}
-              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-white shadow-[0_0_25px_rgba(6,182,212,0.8)] backdrop-blur-xl pointer-events-none"
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur-xl pointer-events-none"
             >
-              <Sparkles size={14} className="text-cyan-300 animate-spin" />
-              <span>🎉 Reel published live to GediOn Cloud!</span>
+              <span>🎉 Published to GediOn Feed!</span>
             </motion.div>
           )}
         </AnimatePresence>
+
+        <AnimatePresence>
+          {deleteToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -15, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-[95] flex items-center gap-2 px-4 py-2.5 rounded-full bg-black/95 border border-rose-500 text-xs font-bold text-white shadow-xl backdrop-blur-xl pointer-events-none text-center max-w-[90%]"
+            >
+              <span className="text-rose-400 font-extrabold text-sm">✓</span>
+              <span>{deleteToast}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {feedToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -15, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-[95] flex items-center gap-2 px-4 py-2.5 rounded-full bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur-xl pointer-events-none text-center max-w-[90%]"
+            >
+              <span>{feedToast}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Reel Options Menu Modal (Delete / Share / Report / Copy Link) */}
+        {optionsReel && (
+          <ReelOptionsMenu
+            isOpen={isOptionsMenuOpen}
+            onClose={handleCloseOptions}
+            reel={optionsReel}
+            currentUser={currentUser}
+            onDeleteReel={handleDeleteReel}
+            onOpenReport={(r) => handleOpenReport(r.id)}
+            onOpenShare={(r) => handleOpenShare(r.id)}
+            onShowToast={(msg) => {
+              if (msg === 'Reel deleted successfully') {
+                setDeleteToast(msg);
+                setTimeout(() => setDeleteToast(null), 3000);
+              } else {
+                setFeedToast(msg);
+                setTimeout(() => setFeedToast(null), 2500);
+              }
+            }}
+          />
+        )}
 
         {/* Floating Toast upon successfully publishing a new Story */}
         <AnimatePresence>
@@ -607,9 +741,8 @@ export const App: React.FC = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -15, scale: 0.95 }}
               transition={{ duration: 0.25 }}
-              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-white shadow-[0_0_25px_rgba(6,182,212,0.8)] backdrop-blur-xl pointer-events-none"
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur-xl pointer-events-none"
             >
-              <Sparkles size={14} className="text-cyan-300 animate-spin" />
               <span>{storyToast}</span>
             </motion.div>
           )}
@@ -623,9 +756,8 @@ export const App: React.FC = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -15, scale: 0.95 }}
               transition={{ duration: 0.25 }}
-              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/95 border border-cyan-400 text-xs font-bold text-cyan-200 shadow-[0_0_25px_rgba(6,182,212,0.65)] backdrop-blur-xl pointer-events-none"
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur-xl pointer-events-none"
             >
-              <Sparkles size={14} className="text-cyan-300 animate-spin" />
               <span>{authToast}</span>
             </motion.div>
           )}
@@ -639,7 +771,7 @@ export const App: React.FC = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -15, scale: 0.95 }}
               transition={{ duration: 0.25 }}
-              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-rose-950/95 border border-rose-500 text-xs font-bold text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.85)] backdrop-blur-xl pointer-events-none text-center max-w-[90%]"
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur-xl pointer-events-none text-center max-w-[90%]"
             >
               <span>{reportToast}</span>
             </motion.div>

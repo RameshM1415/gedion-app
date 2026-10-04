@@ -237,45 +237,40 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
         </div>
       )}
 
-      {/* 1. Cyberpunk Loading Spinner while querying Supabase 'posts' */}
+      {/* 1. Clean Instagram Loading Spinner */}
       {isFetchingCloud && feedReels.length === 0 ? (
-        <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-[#07070c] text-white">
-          <div className="relative flex h-16 w-16 items-center justify-center mb-4">
-            <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20" />
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 border-r-fuchsia-500 animate-spin shadow-[0_0_25px_rgba(6,182,212,0.6)]" />
-            <RefreshCw size={22} className="text-cyan-400 animate-pulse" />
+        <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-black text-white">
+          <div className="relative flex h-12 w-12 items-center justify-center mb-4">
+            <div className="h-9 w-9 rounded-full border-2 border-white/20 border-t-white animate-spin" />
           </div>
-          <p className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-300">
-            SCANNING SUPABASE POSTS LEDGER...
+          <p className="text-xs font-semibold tracking-wide text-zinc-400">
+            Loading Reels...
           </p>
         </div>
       ) : feedReels.length === 0 ? (
-        /* 2. Sleek Cyberpunk Empty State when no posts exist in 'posts' table */
-        <div className="relative flex h-full w-full flex-col items-center justify-center p-6 text-center bg-[#07070c] text-white overflow-hidden">
-          <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-fuchsia-500/10 blur-3xl" />
-
+        /* 2. Authentic Instagram Reels Empty State */
+        <div className="relative flex h-full w-full flex-col items-center justify-center p-6 text-center bg-black text-white">
           <div className="relative z-10 max-w-xs flex flex-col items-center">
-            <div className="h-20 w-20 rounded-3xl bg-gradient-to-tr from-cyan-500/20 via-purple-500/20 to-fuchsia-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 mb-5 shadow-[0_0_35px_rgba(6,182,212,0.35)]">
-              <Radio size={36} className="animate-pulse text-cyan-400" />
+            <div className="h-16 w-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white mb-4">
+              <Radio size={28} className="text-white" />
             </div>
 
-            <h3 className="text-sm md:text-base font-black tracking-wider uppercase font-mono text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-fuchsia-400 leading-relaxed drop-shadow-[0_0_12px_rgba(6,182,212,0.5)]">
-              NO REELS BROADCASTING YET. TAP + TO BE THE FIRST CYBER CREATOR.
+            <h3 className="text-base font-bold tracking-tight text-white">
+              No Reels Yet
             </h3>
 
-            <p className="text-xs text-white/50 mt-2.5 leading-relaxed">
-              The live Supabase <span className="text-cyan-300 font-mono">posts</span> feed is ready. Upload your first 720p MP4/WebM reel to broadcast globally.
+            <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+              When creators share reels, they will appear here. Be the first to share one!
             </p>
 
             {onOpenCreateStory && (
               <button
                 type="button"
                 onClick={onOpenCreateStory}
-                className="mt-6 px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-500 hover:from-cyan-300 hover:to-fuchsia-400 text-black font-black text-xs uppercase tracking-wider shadow-[0_0_25px_rgba(6,182,212,0.8)] active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                className="mt-6 px-5 py-2.5 rounded-lg bg-[#0095f6] hover:bg-[#1877f2] text-white font-bold text-xs transition-all active:scale-95 flex items-center gap-2 cursor-pointer shadow-md"
               >
-                <Plus size={16} strokeWidth={3} />
-                <span>Broadcast First Reel</span>
+                <Plus size={16} strokeWidth={2.5} />
+                <span>Create Reel</span>
               </button>
             )}
           </div>

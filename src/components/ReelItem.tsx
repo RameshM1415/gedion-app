@@ -470,8 +470,8 @@ export const ReelItem: React.FC<ReelItemProps> = ({
 
       {/* Follow Toast Notification */}
       {followToast && (
-        <div className="pointer-events-none absolute top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-black/90 border border-cyan-400 text-xs font-bold text-cyan-200 shadow-[0_0_20px_rgba(6,182,212,0.85)] backdrop-blur-md">
-          <span className="text-cyan-400 font-extrabold text-sm">✓</span>
+        <div className="pointer-events-none absolute top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur-md">
+          <span className="text-emerald-400 font-extrabold text-sm">✓</span>
           <span>{followToast}</span>
         </div>
       )}
