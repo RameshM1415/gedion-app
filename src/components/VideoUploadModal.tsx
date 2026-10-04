@@ -20,6 +20,7 @@ import {
   RefreshCw,
   CheckCircle2,
   CloudLightning,
+  ArrowLeft,
 } from 'lucide-react';
 import { Reel } from '../types';
 import { AudioTrack } from '../data/trendingAudio';
@@ -45,13 +46,13 @@ const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
 const CATEGORIES = [
-  'Comedy',
-  'Dance',
-  'Tech',
-  'Fitness',
-  'Lifestyle',
-  'Music',
   'Entertainment',
+  'Comedy',
+  'Music',
+  'Tech',
+  'Lifestyle',
+  'Dance',
+  'Fitness',
 ] as const;
 
 const QUICK_HASHTAGS = [
@@ -101,7 +102,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
 
   // Details Form State
   const [caption, setCaption] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('Comedy');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Entertainment');
   const [selectedAudio, setSelectedAudio] = useState<AudioTrack | null>(null);
   const [isAudioDrawerOpen, setIsAudioDrawerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -426,9 +427,9 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
           setUploadProgress(scaledProgress);
 
           if (percentComplete < 75) {
-            setUploadStatus(`UPLOADING TO CDN... (${percentComplete}%)`);
+            setUploadStatus(`Uploading video (${percentComplete}%)...`);
           } else {
-            setUploadStatus('TRANSCODING 720p...');
+            setUploadStatus('Processing video...');
           }
         }
       };
@@ -484,7 +485,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
     setErrorNotification(null);
     setIsSubmitting(true);
     setUploadProgress(2);
-    setUploadStatus('UPLOADING TO CDN...');
+    setUploadStatus('Uploading video...');
 
     const now = Date.now();
     const nowIso = new Date().toISOString();
@@ -523,7 +524,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
       const rawSecureUrl = await uploadVideoToCloudinary(selectedVideoFile);
 
       setUploadProgress(92);
-      setUploadStatus('TRANSCODING 720p...');
+      setUploadStatus('Processing video...');
 
       // 3. Video Auto-Compression & CDN URL transformation:
       // Replace `/video/upload/` with `/video/upload/q_auto,f_auto,w_720,c_limit/`
@@ -532,7 +533,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
       );
 
       setUploadProgress(96);
-      setUploadStatus('SYNCING WITH SUPABASE DATABASE...');
+      setUploadStatus('Sharing to GediOn...');
 
       const matchedTags = captionText.match(/#[a-zA-Z0-9_]+/g) || ['#GediOn', '#Viral'];
       const authorHandle = activeUser.username || 'rameshrao034';
@@ -580,7 +581,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
       }
 
       setUploadProgress(100);
-      setUploadStatus('BROADCAST LIVE ON GEDION CDN!');
+      setUploadStatus('Reel shared successfully! 🎉');
 
       const newReel: Reel = {
         id: insertedReel?.id ? String(insertedReel.id) : newReelId,
@@ -651,36 +652,33 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.22 }}
-        className="relative flex flex-col h-full w-full max-w-[460px] md:h-[94vh] md:max-h-[900px] md:rounded-[32px] overflow-hidden bg-[#0a0a0f] border border-cyan-500/40 shadow-[0_0_60px_rgba(6,182,212,0.28),0_0_30px_rgba(217,70,239,0.18)] text-white"
+        className="relative flex flex-col h-full w-full max-w-[460px] md:h-[92vh] md:max-h-[860px] md:rounded-[32px] overflow-hidden bg-[#07070b] border border-white/10 shadow-[0_0_60px_rgba(0,0,0,0.8),0_0_30px_rgba(6,182,212,0.15)] text-white"
       >
-        {/* TOP APP BAR */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-cyan-500/20 bg-[#0a0a0f]/90 backdrop-blur-md z-20">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-cyan-500 via-purple-600 to-fuchsia-500 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.6)]">
-              <Film size={18} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold tracking-wide text-white flex items-center gap-1.5">
-                GediOn Studio
-                <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-gradient-to-r from-cyan-500/20 to-fuchsia-500/20 text-cyan-300 border border-cyan-400/40">
-                  CDN 720p
-                </span>
-              </h2>
-              <p className="text-[11px] text-white/50">
-                {step === 'capture'
-                  ? uploadMode === 'gallery'
-                    ? 'Select MP4 / WebM video for instant CDN compression'
-                    : 'Record live vertical reel'
-                  : 'Preview, add caption & broadcast to GediOn'}
-              </p>
-            </div>
+        {/* TOP APP BAR - Clean, modern Instagram Reels style header */}
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/10 bg-[#07070b]/90 backdrop-blur-md z-20 shrink-0">
+          <div className="flex items-center gap-2">
+            {(step === 'details' || uploadMode === 'camera') && (
+              <button
+                type="button"
+                onClick={uploadMode === 'camera' ? () => setUploadMode('gallery') : handleRetake}
+                disabled={isSubmitting}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors active:scale-95 disabled:opacity-40 cursor-pointer"
+                aria-label="Back"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            )}
+            <h2 className="text-base font-bold text-white tracking-tight">
+              Create New Reel
+            </h2>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            aria-label="Close Studio"
-            className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors active:scale-95 disabled:opacity-40"
+            aria-label="Close"
+            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors active:scale-95 disabled:opacity-40 cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -712,43 +710,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
 
         {/* ================= STEP 1: CAPTURE / UPLOAD ================= */}
         {step === 'capture' && (
-          <div className="relative flex-1 flex flex-col overflow-hidden bg-[#0a0a0f]">
-            {/* Dual Upload Mode Toggle Tabs */}
-            <div className="flex justify-center p-3 z-10 bg-gradient-to-b from-black/80 to-transparent">
-              <div className="flex rounded-full p-1 bg-white/5 border border-cyan-500/30 backdrop-blur-md">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErrorNotification(null);
-                    setUploadMode('gallery');
-                  }}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                    uploadMode === 'gallery'
-                      ? 'bg-gradient-to-r from-cyan-400 to-fuchsia-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.8)]'
-                      : 'text-white/70 hover:text-white'
-                  }`}
-                >
-                  <Upload size={14} />
-                  <span>📁 Upload MP4/WebM</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErrorNotification(null);
-                    setUploadMode('camera');
-                  }}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                    uploadMode === 'camera'
-                      ? 'bg-gradient-to-r from-cyan-400 to-fuchsia-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.8)]'
-                      : 'text-white/70 hover:text-white'
-                  }`}
-                >
-                  <Camera size={14} />
-                  <span>📸 Live Camera</span>
-                </button>
-              </div>
-            </div>
-
+          <div className="relative flex-1 flex flex-col overflow-hidden bg-[#07070b]">
             {/* OPTION A: CAMERA RECORDING */}
             {uploadMode === 'camera' && (
               <div className="relative flex-1 flex flex-col items-center justify-between overflow-hidden">
@@ -766,7 +728,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
 
                   {/* Fallback error overlay if camera is denied */}
                   {cameraError && (
-                    <div className="absolute inset-0 bg-[#0a0a0f]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
+                    <div className="absolute inset-0 bg-[#07070b]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
                       <div className="h-14 w-14 rounded-full bg-fuchsia-500/20 border border-fuchsia-500/40 flex items-center justify-center text-fuchsia-400 mb-3 shadow-[0_0_20px_rgba(217,70,239,0.3)]">
                         <AlertCircle size={28} />
                       </div>
@@ -778,15 +740,15 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setUploadMode('gallery')}
-                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-fuchsia-500 text-black font-bold text-xs shadow-[0_0_20px_rgba(6,182,212,0.7)] flex items-center justify-center gap-2"
+                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-fuchsia-500 text-black font-bold text-xs shadow-[0_0_20px_rgba(6,182,212,0.7)] flex items-center justify-center gap-2 cursor-pointer"
                         >
                           <Upload size={16} />
-                          <span>Select MP4 / WebM File</span>
+                          <span>Choose from Files</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => startCameraStream(facingMode)}
-                          className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center justify-center gap-2"
+                          className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
                         >
                           <RefreshCw size={14} />
                           <span>Retry Camera</span>
@@ -797,7 +759,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                 </div>
 
                 {/* Top Camera Controls Overlay */}
-                <div className="relative z-10 w-full flex items-center justify-between px-4 pt-1">
+                <div className="relative z-10 w-full flex items-center justify-between px-4 pt-3">
                   <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/15 rounded-full p-1">
                     {([15, 30, 60] as const).map((dur) => (
                       <button
@@ -816,15 +778,25 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                     ))}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleFlipCamera}
-                    disabled={isRecording}
-                    title="Flip Camera (Front / Back)"
-                    className="p-2.5 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-white hover:bg-white/20 active:scale-95 transition-all shadow-lg disabled:opacity-40"
-                  >
-                    <RefreshCw size={18} className="text-cyan-300" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleFlipCamera}
+                      disabled={isRecording}
+                      title="Flip Camera"
+                      className="p-2.5 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-white hover:bg-white/20 active:scale-95 transition-all shadow-lg disabled:opacity-40 cursor-pointer"
+                    >
+                      <RefreshCw size={17} className="text-cyan-300" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUploadMode('gallery')}
+                      disabled={isRecording}
+                      className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-white/90 text-xs font-medium hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+                    >
+                      Gallery
+                    </button>
+                  </div>
                 </div>
 
                 {/* Center Recording Timer Display */}
@@ -843,11 +815,11 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                     type="button"
                     onClick={() => setIsAudioDrawerOpen(true)}
                     disabled={isRecording}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 border border-white/20 text-white/90 text-xs font-medium backdrop-blur-md hover:border-cyan-400 active:scale-95 transition-all max-w-[130px]"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 border border-white/20 text-white/90 text-xs font-medium backdrop-blur-md hover:border-cyan-400 active:scale-95 transition-all max-w-[130px] cursor-pointer"
                   >
                     <Music size={14} className="text-cyan-400 shrink-0" />
                     <span className="truncate text-[11px]">
-                      {selectedAudio ? selectedAudio.title : 'Add Sound'}
+                      {selectedAudio ? selectedAudio.title : 'Sound'}
                     </span>
                   </button>
 
@@ -879,7 +851,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                       type="button"
                       onClick={isRecording ? stopRecording : startRecording}
                       aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
-                      className="absolute flex items-center justify-center h-14 w-14 rounded-full bg-white transition-transform active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.4)]"
+                      className="absolute flex items-center justify-center h-14 w-14 rounded-full bg-white transition-transform active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.4)] cursor-pointer"
                     >
                       {isRecording ? (
                         <span className="h-5 w-5 rounded-md bg-red-600 shadow-[0_0_10px_#dc2626]" />
@@ -893,7 +865,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                     <button
                       type="button"
                       onClick={handleTogglePause}
-                      className="p-3 rounded-full bg-black/60 border border-white/20 text-white backdrop-blur-md active:scale-95 transition-all"
+                      className="p-3 rounded-full bg-black/60 border border-white/20 text-white backdrop-blur-md active:scale-95 transition-all cursor-pointer"
                     >
                       {isPaused ? <Play size={18} className="text-cyan-400" /> : <Pause size={18} />}
                     </button>
@@ -901,7 +873,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setUploadMode('gallery')}
-                      className="flex flex-col items-center gap-0.5 text-white/70 hover:text-cyan-300 transition-colors"
+                      className="flex flex-col items-center gap-0.5 text-white/70 hover:text-cyan-300 transition-colors cursor-pointer"
                     >
                       <div className="h-9 w-9 rounded-xl border border-white/20 bg-white/10 flex items-center justify-center">
                         <Upload size={16} />
@@ -913,12 +885,12 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
               </div>
             )}
 
-            {/* OPTION B: GALLERY FILE PICKER (Direct MP4/WebM Selection) */}
+            {/* OPTION B: CREATOR-FRIENDLY GALLERY SELECTION (Sleek 9:16 Preview Card) */}
             {uploadMode === 'gallery' && (
               <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
-                className="relative flex-1 flex flex-col p-4 overflow-y-auto space-y-4"
+                className="relative flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto no-scrollbar"
               >
                 {/* Hidden File Input */}
                 <input
@@ -929,31 +901,53 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                   className="hidden"
                 />
 
-                {/* Cyberpunk Dropzone Area */}
+                {/* Sleek 9:16 rounded vertical preview card with subtle neon borders */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="relative flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-dashed border-cyan-500/50 hover:border-fuchsia-400 bg-gradient-to-b from-cyan-950/20 via-[#0a0a0f] to-fuchsia-950/20 hover:from-cyan-950/30 hover:to-fuchsia-950/30 transition-all cursor-pointer group shadow-[0_0_35px_rgba(6,182,212,0.18)]"
+                  className="relative w-full max-w-[270px] aspect-[9/16] rounded-[28px] p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group overflow-hidden bg-gradient-to-b from-white/[0.04] via-[#090913] to-purple-950/20 border border-white/15 hover:border-cyan-400/60 shadow-[0_0_35px_rgba(0,0,0,0.8),0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_40px_rgba(6,182,212,0.3)]"
                 >
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-fuchsia-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 mb-4 group-hover:scale-110 transition-transform shadow-[0_0_25px_rgba(6,182,212,0.45)]">
-                    <CloudLightning size={32} />
-                  </div>
+                  {/* Subtle neon ambient backlight */}
+                  <div className="pointer-events-none absolute -inset-2 bg-gradient-to-tr from-cyan-500/10 via-purple-500/10 to-pink-500/10 blur-xl opacity-60 group-hover:opacity-100 transition-opacity" />
 
-                  <h3 className="text-base font-extrabold text-white mb-1 text-center tracking-wide">
-                    Select MP4 or WebM Reel
-                  </h3>
-                  <p className="text-xs text-white/60 text-center max-w-xs mb-4">
-                    Tap to choose from mobile/desktop or drag &amp; drop here. Auto-transcodes to 720p for zero-buffering playback.
-                  </p>
+                  <div className="relative z-10 flex flex-col items-center justify-center h-full w-full space-y-4">
+                    {/* Clean video icon with glowing badge */}
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-cyan-400/20 via-purple-500/20 to-fuchsia-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 group-hover:text-white transition-all shadow-[0_0_20px_rgba(6,182,212,0.35)]">
+                      <VideoIcon size={30} strokeWidth={2.2} />
+                    </div>
 
-                  <div className="px-5 py-2.5 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-500 group-hover:from-cyan-300 group-hover:to-fuchsia-400 text-black text-xs font-extrabold shadow-[0_0_20px_rgba(6,182,212,0.8)] flex items-center gap-2">
-                    <VideoIcon size={14} />
-                    <span>Browse MP4 / WebM Video 🚀</span>
-                  </div>
+                    {/* Simple title and subtitle */}
+                    <div className="space-y-1">
+                      <h3 className="text-base font-extrabold text-white tracking-tight">
+                        Select a Video from Gallery
+                      </h3>
+                      <p className="text-xs text-white/50 leading-relaxed max-w-[200px]">
+                        Share your reel with the community
+                      </p>
+                    </div>
 
-                  <div className="flex items-center gap-3 mt-4 text-[10px] text-cyan-300/70 font-mono">
-                    <span>• MP4 / WebM</span>
-                    <span>• Max {MAX_VIDEO_SIZE_MB}MB</span>
-                    <span>• Auto 720p CDN</span>
+                    {/* Two distinct modern pill buttons */}
+                    <div className="flex flex-col gap-2.5 w-full pt-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full py-3 px-4 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-500 hover:from-cyan-300 hover:to-fuchsia-400 active:scale-95 text-black font-extrabold text-xs shadow-[0_0_20px_rgba(6,182,212,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Upload size={15} strokeWidth={2.5} />
+                        <span>📁 Choose from Files</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorNotification(null);
+                          setUploadMode('camera');
+                        }}
+                        className="w-full py-3 px-4 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 border border-white/15 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Camera size={15} strokeWidth={2.2} className="text-fuchsia-400" />
+                        <span>📷 Open Camera</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -963,11 +957,11 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
 
         {/* ================= STEP 2: DETAILS, PREVIEW & POST ================= */}
         {step === 'details' && videoBlobUrl && (
-          <div className="relative flex-1 flex flex-col overflow-y-auto p-4 space-y-4 bg-[#0a0a0f]">
-            {/* Top row: Video Preview Player + Quick Actions */}
-            <div className="flex gap-4">
-              {/* 9:16 Vertical Preview Video */}
-              <div className="relative w-36 aspect-[9/16] rounded-2xl overflow-hidden bg-black border border-cyan-500/50 shadow-[0_0_25px_rgba(6,182,212,0.35)] shrink-0 group">
+          <div className="relative flex-1 flex flex-col overflow-y-auto no-scrollbar p-4 space-y-4 bg-[#07070b]">
+            {/* Top row: 9:16 Video Preview Card + Caption Textarea */}
+            <div className="flex gap-3.5 items-start">
+              {/* 9:16 Vertical Preview Video inside card with subtle neon border */}
+              <div className="relative w-36 aspect-[9/16] rounded-2xl overflow-hidden bg-black border border-white/20 shadow-[0_0_25px_rgba(0,0,0,0.8),0_0_15px_rgba(6,182,212,0.25)] shrink-0 group">
                 <video
                   ref={previewVideoRef}
                   src={videoBlobUrl}
@@ -980,7 +974,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                   onPause={() => setIsVideoPlaying(false)}
                 />
 
-                {/* Play/Pause overlay */}
+                {/* Play/Pause overlay indicator */}
                 <button
                   type="button"
                   onClick={() => {
@@ -992,76 +986,57 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                       }
                     }
                   }}
-                  className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                 >
                   <div className="h-10 w-10 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white backdrop-blur-md">
                     {isVideoPlaying ? <Pause size={18} /> : <Play size={18} className="translate-x-0.5" />}
                   </div>
                 </button>
 
-                {/* Bottom Mute button */}
+                {/* Audio Mute button on top-right */}
                 <button
                   type="button"
                   onClick={() => setIsVideoMuted(!isVideoMuted)}
-                  className="absolute bottom-2 right-2 p-1.5 rounded-full bg-black/60 border border-white/20 text-white backdrop-blur-md"
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 border border-white/20 text-white backdrop-blur-md hover:bg-black/80 transition-colors cursor-pointer"
                 >
                   {isVideoMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
                 </button>
-              </div>
 
-              {/* Media Info & Retake Action */}
-              <div className="flex-1 flex flex-col justify-between py-1">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-[11px] font-bold mb-2">
-                    <CheckCircle2 size={12} className="text-cyan-400" />
-                    <span>Ready for 720p CDN</span>
-                  </div>
-                  <h4 className="text-xs font-bold text-white mb-1">
-                    {videoFile ? videoFile.name : 'Captured Video Reel'}
-                  </h4>
-                  <p className="text-[11px] text-white/50 leading-relaxed">
-                    {videoFile
-                      ? `Size: ${(videoFile.size / (1024 * 1024)).toFixed(2)} MB • Auto-compressed via Cloudinary q_auto,f_auto,w_720`
-                      : 'Direct unsigned upload to Cloudinary CDN with zero-buffering mobile optimization.'}
-                  </p>
-                </div>
-
+                {/* Subtle "Change Video" button overlay */}
                 <button
                   type="button"
                   disabled={isSubmitting}
                   onClick={handleRetake}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 active:scale-95 transition-all mt-3 disabled:opacity-40"
+                  className="absolute bottom-2.5 inset-x-2.5 py-1.5 px-2 rounded-full bg-black/75 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold flex items-center justify-center gap-1 shadow-md active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
                 >
-                  <RotateCcw size={14} />
+                  <RotateCcw size={11} />
                   <span>Change Video</span>
                 </button>
               </div>
+
+              {/* Caption & Metadata text area */}
+              <div className="flex-1 flex flex-col h-full min-h-[160px]">
+                <textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  disabled={isSubmitting}
+                  placeholder="Write a caption... (e.g. #GediOn #Viral)"
+                  rows={6}
+                  className="w-full h-full min-h-[150px] rounded-2xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/40 p-3.5 text-xs text-white placeholder-white/40 transition-all resize-none leading-relaxed"
+                />
+              </div>
             </div>
 
-            {/* CAPTION & HASHTAGS INPUT */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-white/80 flex items-center gap-1.5">
-                <Hash size={14} className="text-cyan-400" />
-                <span>Caption &amp; Hashtags</span>
-              </label>
-              <textarea
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                disabled={isSubmitting}
-                placeholder="Write a caption... e.g. Neon pulse over Neo-Tokyo #GediOn #Viral"
-                rows={3}
-                className="w-full rounded-2xl bg-white/5 border border-cyan-500/25 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/50 p-3 text-xs text-white placeholder-white/40 transition-all resize-none"
-              />
-
-              {/* Quick Hashtag Chips */}
-              <div className="flex flex-wrap gap-1.5 pt-1">
+            {/* Quick Hashtag Chips */}
+            <div className="space-y-1">
+              <div className="flex flex-wrap gap-1.5">
                 {QUICK_HASHTAGS.map((tag) => (
                   <button
                     key={tag}
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => handleAddHashtag(tag)}
-                    className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-500/40 text-[11px] font-medium text-white/70 hover:text-cyan-300 transition-all"
+                    className="px-2.5 py-1 rounded-full bg-white/[0.04] hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-500/40 text-[11px] font-medium text-white/70 hover:text-cyan-300 transition-all active:scale-95 cursor-pointer"
                   >
                     {tag}
                   </button>
@@ -1069,37 +1044,37 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
               </div>
             </div>
 
-            {/* SOUND / AUDIO TAG SELECTOR */}
+            {/* Audio / Soundtrack Selector */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-white/80 flex items-center justify-between">
+              <label className="text-xs font-bold text-white/90 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <Music size={14} className="text-cyan-400" />
-                  <span>Audio &amp; Soundtrack</span>
+                  <span>Audio &amp; Music</span>
                 </span>
                 <button
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => setIsAudioDrawerOpen(true)}
-                  className="text-[11px] text-cyan-400 font-semibold hover:underline"
+                  className="text-[11px] text-cyan-400 font-bold hover:underline cursor-pointer"
                 >
-                  Change Sound →
+                  {selectedAudio ? 'Change Audio' : 'Select Sound'} →
                 </button>
               </label>
 
               <div
                 onClick={() => !isSubmitting && setIsAudioDrawerOpen(true)}
-                className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/15 hover:border-cyan-500/40 cursor-pointer transition-all group"
+                className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-cyan-400/40 cursor-pointer transition-all group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 group-hover:scale-105 transition-transform">
-                    <Music size={18} />
+                  <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-fuchsia-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300 group-hover:scale-105 transition-transform">
+                    <Music size={16} />
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">
                       {selectedAudio ? selectedAudio.title : 'Original Audio'}
                     </h5>
                     <p className="text-[11px] text-white/50">
-                      {selectedAudio ? selectedAudio.artist : 'Recorded / Uploaded Audio'}
+                      {selectedAudio ? selectedAudio.artist : 'Recorded with video'}
                     </p>
                   </div>
                 </div>
@@ -1108,9 +1083,9 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
               </div>
             </div>
 
-            {/* CATEGORY SELECTOR */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-white/80 flex items-center gap-1.5">
+            {/* Category Selector Chips */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-white/90 flex items-center gap-1.5">
                 <Layers size={14} className="text-cyan-400" />
                 <span>Select Category</span>
               </label>
@@ -1121,10 +1096,10 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                       selectedCategory === cat
-                        ? 'bg-gradient-to-r from-cyan-400 to-fuchsia-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.8)] border border-cyan-300'
-                        : 'bg-white/5 text-white/70 hover:text-white border border-white/10'
+                        ? 'bg-gradient-to-r from-cyan-400 to-fuchsia-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.6)] font-bold'
+                        : 'bg-white/[0.04] text-white/70 hover:text-white border border-white/10 hover:border-white/20'
                     }`}
                   >
                     {cat}
@@ -1133,40 +1108,35 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
               </div>
             </div>
 
-            {/* ACTION: POST REEL BUTTON / CYBERPUNK NEON PROGRESS BAR */}
-            <div className="pt-2 pb-4 space-y-2">
+            {/* Prominent Action Button: 🚀 Share Reel & Progress Bar */}
+            <div className="pt-2 pb-4">
               {isSubmitting ? (
-                <div className="p-4 rounded-2xl bg-[#0d0d16] border border-cyan-400/50 backdrop-blur-md shadow-[0_0_30px_rgba(6,182,212,0.35),0_0_20px_rgba(217,70,239,0.2)] space-y-3">
+                <div className="p-4 rounded-2xl bg-white/[0.04] border border-cyan-400/40 backdrop-blur-md shadow-[0_0_25px_rgba(6,182,212,0.25)] space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-extrabold tracking-wider text-cyan-300 flex items-center gap-2 uppercase font-mono">
+                    <span className="font-bold text-cyan-300 flex items-center gap-2">
                       <RefreshCw size={14} className="animate-spin text-cyan-400" />
-                      {uploadStatus || 'UPLOADING TO CDN...'}
+                      <span>{uploadStatus || 'Sharing your reel...'}</span>
                     </span>
-                    <span className="font-mono font-black text-sm text-fuchsia-400 drop-shadow-[0_0_8px_rgba(217,70,239,0.8)]">
+                    <span className="font-extrabold text-sm text-fuchsia-400">
                       {uploadProgress}%
                     </span>
                   </div>
 
-                  <div className="w-full bg-white/10 rounded-full h-3.5 overflow-hidden p-0.5 border border-cyan-500/40">
+                  <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden p-0.5 border border-white/10">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_#06b6d4]"
+                      className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-500 shadow-[0_0_12px_#06b6d4]"
                       animate={{ width: `${uploadProgress}%` }}
                       transition={{ duration: 0.15 }}
                     />
                   </div>
-
-                  <p className="text-[10px] text-white/50 text-center font-mono">
-                    Cloudinary CDN (ulcqbucx) • Auto-Optimizing q_auto,f_auto,w_720,c_limit
-                  </p>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={handlePostReel}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-500 hover:from-cyan-300 hover:to-fuchsia-400 text-black font-black text-sm shadow-[0_0_25px_rgba(6,182,212,0.8)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-500 hover:from-cyan-300 hover:to-fuchsia-400 text-black font-black text-sm shadow-[0_0_25px_rgba(6,182,212,0.7)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <CloudLightning size={18} />
-                  <span>Broadcast Reel to CDN 🚀</span>
+                  <span>🚀 Share Reel</span>
                 </button>
               )}
             </div>

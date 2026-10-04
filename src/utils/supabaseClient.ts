@@ -626,3 +626,89 @@ export async function fetchUserMetricsFromSupabase(
 
   return { followersCount, followingCount, totalLikesCount };
 }
+
+/**
+ * Checks whether a reel belongs to the currently logged in user/session.
+ * Checks user ID, creatorId, username, and author handle.
+ */
+export function isReelOwnedByUser(reel: Reel, user: any): boolean {
+  if (!reel || !user) return false;
+
+  const targetUserId = String(user.id || '');
+  const cleanUser = String(user.username || '').toLowerCase().replace(/^@/, '');
+  const cleanName = String(user.displayName || user.name || '').toLowerCase().replace(/^@/, '');
+  const isRamesh = cleanUser === 'rameshrao034' || targetUserId.includes('rameshrao034');
+
+  // Match by user_id or creatorId
+  if (targetUserId) {
+    if (reel.creatorId && String(reel.creatorId) === targetUserId) return true;
+    if (reel.userId && String(reel.userId) === targetUserId) return true;
+  }
+
+  // Match by username
+  const rUsername = String(reel.username || '').toLowerCase().replace(/^@/, '');
+  if (cleanUser && rUsername === cleanUser) return true;
+
+  // Match by displayName
+  const rDisplayName = String(reel.displayName || '').toLowerCase().replace(/^@/, '');
+  if (cleanName && (rDisplayName === cleanName || rUsername === cleanName)) return true;
+
+  // Primary creator handle default fallback
+  if (isRamesh && (rUsername === 'rameshrao034' || rDisplayName === 'rameshrao034' || rDisplayName === 'ramesh rao')) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Delete a reel permanently from Supabase 'posts' table and 'reels' table.
+ */
+export async function deleteReelFromSupabase(reelId: string): Promise<boolean> {
+  if (!reelId) return false;
+  let deleted = false;
+  const numId = Number(reelId);
+
+  // 1. Delete from 'posts' table
+  try {
+    const { error: postErr } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', reelId);
+    if (!postErr) deleted = true;
+    if (!isNaN(numId)) {
+      await supabase.from('posts').delete().eq('id', numId);
+    }
+  } catch (err) {
+    console.warn('Supabase posts delete note:', err);
+  }
+
+  // 2. Delete from 'reels' table
+  try {
+    const { error: reelErr } = await supabase
+      .from('reels')
+      .delete()
+      .eq('id', reelId);
+    if (!reelErr) deleted = true;
+    if (!isNaN(numId)) {
+      await supabase.from('reels').delete().eq('id', numId);
+    }
+  } catch (err) {
+    console.warn('Supabase reels delete note:', err);
+  }
+
+  // 3. Also remove from local custom reels in browser storage
+  try {
+    const raw = localStorage.getItem('gedion_custom_reels');
+    if (raw) {
+      const parsed: Reel[] = JSON.parse(raw);
+      const filtered = parsed.filter((r) => r.id !== reelId);
+      localStorage.setItem('gedion_custom_reels', JSON.stringify(filtered));
+    }
+  } catch (err) {
+    console.warn('Local storage delete note:', err);
+  }
+
+  return deleted;
+}
+

@@ -16,6 +16,7 @@ interface ReelItemProps {
   onOpenComments: () => void;
   onOpenShare: () => void;
   onOpenReport?: () => void;
+  onOpenOptions?: () => void;
   currentUser?: AuthUser | null;
   onRequireAuth?: (promptMessage: string) => void;
 }
@@ -28,6 +29,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
   onOpenComments,
   onOpenShare,
   onOpenReport,
+  onOpenOptions,
   currentUser,
   onRequireAuth,
 }) => {
@@ -491,6 +493,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
         onOpenComments={onOpenComments}
         onOpenShare={onOpenShare}
         onOpenReport={onOpenReport}
+        onOpenOptions={onOpenOptions}
       />
 
       {/* Bottom Creator & Audio Info Bar */}

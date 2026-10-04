@@ -10,6 +10,9 @@ export interface CommentItem {
 
 export interface Reel {
   id: string;
+  creatorId?: string;
+  creatorEmail?: string;
+  userId?: string;
   username: string;
   displayName: string;
   avatar: string;

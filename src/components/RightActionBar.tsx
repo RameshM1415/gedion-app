@@ -13,6 +13,7 @@ interface RightActionBarProps {
   onOpenComments: () => void;
   onOpenShare: () => void;
   onOpenReport?: () => void;
+  onOpenOptions?: () => void;
 }
 
 export const RightActionBar: React.FC<RightActionBarProps> = ({
@@ -24,6 +25,7 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
   onOpenComments,
   onOpenShare,
   onOpenReport,
+  onOpenOptions,
 }) => {
   return (
     <div
@@ -187,15 +189,21 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
         </span>
       </div>
 
-      {/* Subtle 3-Dots / Flag Menu Button */}
-      {onOpenReport && (
+      {/* Subtle 3-Dots Reel Action Menu Button */}
+      {(onOpenOptions || onOpenReport) && (
         <div className="flex flex-col items-center">
           <motion.button
-            onClick={onOpenReport}
+            onClick={() => {
+              if (onOpenOptions) {
+                onOpenOptions();
+              } else if (onOpenReport) {
+                onOpenReport();
+              }
+            }}
             whileTap={{ scale: 0.8 }}
             whileHover={{ scale: 1.1 }}
-            aria-label="Report reel"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white/60 hover:text-rose-400 hover:border-rose-400/40 transition-colors"
+            aria-label="Reel options"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white/70 hover:text-cyan-400 hover:border-cyan-400/40 transition-colors"
           >
             <MoreVertical size={18} />
           </motion.button>

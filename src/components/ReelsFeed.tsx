@@ -12,6 +12,7 @@ interface ReelsFeedProps {
   onOpenComments: (reelId: string) => void;
   onOpenShare: (reelId: string) => void;
   onOpenReport?: (reelId: string) => void;
+  onOpenOptions?: (reel: Reel) => void;
   scrollToTopTrigger?: number;
   onOpenCreateStory?: () => void;
   onReelsLoaded?: (loadedReels: Reel[]) => void;
@@ -28,6 +29,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   onOpenComments,
   onOpenShare,
   onOpenReport,
+  onOpenOptions,
   scrollToTopTrigger,
   onOpenCreateStory,
   onReelsLoaded,
@@ -43,6 +45,21 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   const [feedReels, setFeedReels] = useState<Reel[]>(reels);
   const [isFetchingCloud, setIsFetchingCloud] = useState(true);
   const [fetchGlitch, setFetchGlitch] = useState(false);
+
+  // Listen for reel-deleted event to remove immediately from feed without page reload
+  useEffect(() => {
+    const handleReelDeleted = (e: Event) => {
+      const customEvent = e as CustomEvent<{ reelId: string }>;
+      const deletedId = customEvent.detail?.reelId;
+      if (deletedId) {
+        setFeedReels((prev) => prev.filter((r) => r.id !== deletedId));
+      }
+    };
+    window.addEventListener('reel-deleted', handleReelDeleted);
+    return () => {
+      window.removeEventListener('reel-deleted', handleReelDeleted);
+    };
+  }, []);
 
   const setReels = useCallback((action: any) => {
     setFeedReels((prev) => {
@@ -280,6 +297,13 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
                 onOpenComments={() => onOpenComments(reel.id)}
                 onOpenShare={() => onOpenShare(reel.id)}
                 onOpenReport={() => onOpenReport?.(reel.id)}
+                onOpenOptions={() => {
+                  if (onOpenOptions) {
+                    onOpenOptions(reel);
+                  } else {
+                    onOpenReport?.(reel.id);
+                  }
+                }}
                 currentUser={currentUser}
                 onRequireAuth={onRequireAuth}
               />

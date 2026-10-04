@@ -25,6 +25,8 @@ import {
   ArrowUpRight,
   LogOut,
   LogIn,
+  MoreVertical,
+  Trash2,
 } from 'lucide-react';
 import { Reel } from '../types';
 import { compressImageFile } from '../utils/mediaUtils';
@@ -32,6 +34,7 @@ import { SettingsModal } from './SettingsModal';
 import { ShareProfileModal } from './ShareProfileModal';
 import { CreatorInsightsModal } from './CreatorInsightsModal';
 import { WalletScreen } from './WalletScreen';
+import { ReelOptionsMenu } from './ReelOptionsMenu';
 import { AuthUser, DEFAULT_AUTH_USER, getStoredAuth } from '../utils/authStorage';
 import {
   supabase,
@@ -41,6 +44,7 @@ import {
   fetchSupabaseProfile,
   fetchUserMetricsFromSupabase,
   fetchUserPostsFromSupabase,
+  deleteReelFromSupabase,
   UserProfileData,
 } from '../utils/supabaseClient';
 
@@ -67,6 +71,7 @@ export interface ProfileScreenProps {
   onOpenAuthModal?: (prompt?: string) => void;
   onOpenOnboardingVideo?: () => void;
   onSignOut?: () => void;
+  onDeleteReel?: (reelId: string) => void;
   currentUser?: AuthUser | null;
 }
 
@@ -79,6 +84,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onOpenAuthModal,
   onOpenOnboardingVideo,
   onSignOut,
+  onDeleteReel,
   currentUser,
 }) => {
   // Load persisted user profile or initialize from authenticated session
@@ -219,8 +225,51 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   }, [currentUser, profile.username, profile.name]);
 
-  // Listen for newly published reels via upload modal:
-  // Optimistically increment REELS count and re-fetch from Supabase immediately without page reload!
+  // Reel Options Menu & Delete State
+  const [optionsReel, setOptionsReel] = useState<Reel | null>(null);
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [profileToast, setProfileToast] = useState<string | null>(null);
+
+  const handleOpenReelOptions = useCallback((reel: Reel) => {
+    setOptionsReel(reel);
+    setIsOptionsOpen(true);
+  }, []);
+
+  const handleCloseReelOptions = useCallback(() => {
+    setIsOptionsOpen(false);
+    setOptionsReel(null);
+  }, []);
+
+  const handleDeleteReelFromProfile = useCallback(async (reelId: string) => {
+    // 1. Optimistically decrement REELS count and remove immediately from creatorReels & savedReels
+    setCreatorReels((prev) => prev.filter((r) => r.id !== reelId));
+    setSavedReelIds((prev) => prev.filter((id) => id !== reelId));
+
+    // 2. Dismiss playback modal if currently open
+    setPlaybackReel((current) => (current?.id === reelId ? null : current));
+
+    // 3. Notify parent applet state
+    onDeleteReel?.(reelId);
+
+    // 4. Broadcast global reel-deleted event so all app views stay in sync
+    window.dispatchEvent(
+      new CustomEvent('reel-deleted', { detail: { reelId } })
+    );
+
+    // 5. Show quick success toast notification
+    setProfileToast('Reel deleted successfully');
+    setTimeout(() => setProfileToast(null), 3200);
+
+    // 6. Close options modal
+    setIsOptionsOpen(false);
+    setOptionsReel(null);
+
+    // 7. Delete in background from Supabase
+    await deleteReelFromSupabase(reelId);
+  }, [onDeleteReel]);
+
+  // Listen for newly published reels via upload modal AND deleted reels:
+  // Optimistically increment/decrement REELS count immediately without page reload!
   useEffect(() => {
     const handleReelPublished = (e: Event) => {
       const customEvent = e as CustomEvent<Reel>;
@@ -236,9 +285,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       loadCreatorReels();
     };
 
+    const handleReelDeleted = (e: Event) => {
+      const customEvent = e as CustomEvent<{ reelId: string }>;
+      const deletedId = customEvent.detail?.reelId;
+      if (deletedId) {
+        setCreatorReels((prev) => prev.filter((r) => r.id !== deletedId));
+        setSavedReelIds((prev) => prev.filter((id) => id !== deletedId));
+        setPlaybackReel((current) => (current?.id === deletedId ? null : current));
+      }
+    };
+
     window.addEventListener('reel-published', handleReelPublished);
+    window.addEventListener('reel-deleted', handleReelDeleted);
     return () => {
       window.removeEventListener('reel-published', handleReelPublished);
+      window.removeEventListener('reel-deleted', handleReelDeleted);
     };
   }, [loadCreatorReels]);
 
@@ -819,6 +880,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       />
                     )}
 
+                    {/* 3-Dots Options Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenReelOptions(reel);
+                      }}
+                      className="absolute top-1.5 left-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:text-white hover:bg-black/90 transition-colors z-10"
+                      aria-label="Reel options"
+                    >
+                      <MoreVertical size={11} />
+                    </button>
+
                     {/* Play Icon indicator on top-right */}
                     {isVideo && (
                       <div className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md">
@@ -952,14 +1026,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => setPlaybackMuted((prev) => !prev)}
-                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10"
+                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:bg-black/80"
+                  aria-label={playbackMuted ? 'Unmute' : 'Mute'}
                 >
                   {playbackMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
                 </button>
                 <button
                   type="button"
+                  onClick={() => handleOpenReelOptions(playbackReel)}
+                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:border-cyan-400/50 hover:bg-black/80"
+                  aria-label="Reel options"
+                >
+                  <MoreVertical size={16} />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setPlaybackReel(null)}
-                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10"
+                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:bg-black/80"
+                  aria-label="Close playback"
                 >
                   <X size={16} />
                 </button>
