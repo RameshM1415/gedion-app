@@ -2,16 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Download, X } from 'lucide-react';
 import { INITIAL_REELS } from './data/mockReels';
-import { Reel, FeedTab, NavTab } from './types';
+import { Reel, FeedTab, NavTab, CommentItem, StoryItem } from './types';
 import { TopHeader } from './components/TopHeader';
 import { StoriesTray } from './components/StoriesTray';
 import { StoryPreviewModal } from './components/StoryPreviewModal';
 import { AddStoryModal } from './components/AddStoryModal';
 import { MOCK_STORIES } from './data/mockStories';
-import { StoryItem } from './types';
 import { BottomNav } from './components/BottomNav';
 import { ReelsFeed } from './components/ReelsFeed';
-import { InstagramFeed } from './components/InstagramFeed';
 import { ReelOptionsMenu } from './components/ReelOptionsMenu';
 import { CommentDrawer } from './components/CommentDrawer';
 import { ShareSheet } from './components/ShareSheet';
@@ -103,6 +101,10 @@ export const App: React.FC = () => {
   const [isAddStoryOpen, setIsAddStoryOpen] = useState<boolean>(false);
   const [storyToast, setStoryToast] = useState<string | null>(null);
   const [isStoriesVisible, setIsStoriesVisible] = useState<boolean>(true);
+
+  const hasUserStory = stories.some(
+    (s) => s.id.startsWith('story_') || (currentUser && s.username === currentUser.username)
+  );
 
   const handleSelectStory = (index: number) => {
     setSelectedStoryIndex(index);
@@ -519,54 +521,8 @@ export const App: React.FC = () => {
       >
         {/* Main Tab Views */}
         <div className="relative h-full w-full overflow-hidden">
-          {/* 1. HOME TAB (🏠): Instagram Clean Header + Stories Bar + Instagram Post Feed */}
-          {navTab === 'home' && (
-            <div className="flex flex-col h-full w-full overflow-hidden">
-              <TopHeader
-                onOpenCreate={() => {
-                  if (!currentUser) {
-                    setAuthPromptMessage('Sign in to broadcast your posts to GediOn!');
-                    setIsAuthModalOpen(true);
-                    return;
-                  }
-                  setCreateMode('REEL');
-                  setNavTab('create');
-                }}
-                onOpenActivity={() => setNavTab('activity')}
-                hasUnreadActivity={false}
-              />
-              <InstagramFeed
-                reels={displayedReels}
-                stories={stories}
-                currentUser={currentUser}
-                isMuted={isMuted}
-                onToggleMute={() => setIsMuted((prev) => !prev)}
-                onToggleLike={handleToggleLike}
-                onToggleBookmark={handleToggleBookmark}
-                onOpenComments={handleOpenComments}
-                onOpenShare={handleOpenShare}
-                onOpenOptions={handleOpenOptions}
-                onOpenYourStory={handleOpenAddStory}
-                onSelectStory={handleSelectStory}
-                onOpenCreate={() => {
-                  if (!currentUser) {
-                    setAuthPromptMessage('Sign in to broadcast your posts to GediOn!');
-                    setIsAuthModalOpen(true);
-                    return;
-                  }
-                  setCreateMode('REEL');
-                  setNavTab('create');
-                }}
-                onShowToast={(msg) => {
-                  setFeedToast(msg);
-                  setTimeout(() => setFeedToast(null), 2500);
-                }}
-              />
-            </div>
-          )}
-
-          {/* 2. REELS TAB (▶️): Dedicated full-screen vertical swipe Reels player */}
-          {navTab === 'reels' && (
+          {/* 1. HOME TAB (🏠) & REELS TAB (▶️): Full-bleed, edge-to-edge vertical Reels player */}
+          {(navTab === 'home' || navTab === 'reels') && (
             <div className="relative h-full w-full overflow-hidden bg-black text-white">
               <ReelsFeed
                 reels={displayedReels}
@@ -580,7 +536,7 @@ export const App: React.FC = () => {
                 onReelsLoaded={handleReelsLoaded}
                 onNewRealtimeReel={handleNewRealtimeReel}
                 currentUser={currentUser}
-                onStoriesVisibilityChange={() => {}}
+                onStoriesVisibilityChange={setIsStoriesVisible}
                 onRequireAuth={(prompt) => {
                   setAuthPromptMessage(prompt);
                   setIsAuthModalOpen(true);
@@ -595,6 +551,38 @@ export const App: React.FC = () => {
                   setNavTab('create');
                 }}
               />
+
+              {/* Floating Header & Stories Overlay (Edge-to-edge full-bleed over Reels) */}
+              <div
+                className={`absolute top-0 inset-x-0 z-30 pointer-events-none flex flex-col bg-gradient-to-b from-black/85 via-black/40 to-transparent transition-all duration-300 ${
+                  isStoriesVisible ? 'pt-1.5 pb-2' : 'pt-1.5 pb-0'
+                }`}
+              >
+                {/* 1. Clean GediOn Top Bar: Logo on the left, balanced Following / For You tabs, clean right side */}
+                <TopHeader
+                  activeTab={feedTab}
+                  onTabChange={setFeedTab}
+                  onOpenActivity={() => setNavTab('activity')}
+                  hasUnreadActivity={false}
+                />
+
+                {/* 2. Floating Stories Tray (Circular avatars floating over video without solid black bars) */}
+                <div
+                  className={`transition-all duration-300 overflow-hidden ${
+                    isStoriesVisible
+                      ? 'opacity-100 max-h-[110px] pointer-events-auto'
+                      : 'opacity-0 max-h-0 pointer-events-none -translate-y-2'
+                  }`}
+                >
+                  <StoriesTray
+                    stories={stories}
+                    onOpenYourStory={handleOpenAddStory}
+                    onSelectStory={handleSelectStory}
+                    userAvatar={currentUser?.avatar}
+                    hasUserStory={hasUserStory}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -785,7 +773,7 @@ export const App: React.FC = () => {
           reel={activeCommentReel}
           comments={activeCommentReel?.comments ?? []}
           onAddComment={handleAddComment}
-          currentUser={currentUser}
+          currentUser={currentUser || undefined}
         />
 
         {/* Share Modal Bottom Sheet */}
@@ -841,7 +829,7 @@ export const App: React.FC = () => {
         {isOnboardingVideoOpen && (
           <OnboardingVideoModal
             isOpen={isOnboardingVideoOpen}
-            user={currentUser}
+            user={currentUser || DEFAULT_AUTH_USER}
             onComplete={handleOnboardingComplete}
           />
         )}

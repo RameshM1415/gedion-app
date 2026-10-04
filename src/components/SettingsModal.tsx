@@ -24,16 +24,16 @@ import { useTheme } from '../context/ThemeContext';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onShowToast: (msg: string) => void;
+  onShowToast?: (msg: string) => void;
   onOpenAuthModal?: () => void;
   onOpenOnboardingVideo?: () => void;
-  currentUser?: AuthUser;
+  currentUser?: AuthUser | null;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
-  onShowToast,
+  onShowToast = () => {},
   onOpenAuthModal,
   onOpenOnboardingVideo,
   currentUser,

@@ -925,9 +925,10 @@ export const RecordingView: React.FC<RecordingViewProps> = ({
           <EffectsDrawer
             isOpen={isEffectsDrawerOpen}
             onClose={() => setIsEffectsDrawerOpen(false)}
-            activeFilter={customCssFilter || selectedFilterId}
-            onSelectFilter={(filterKey) => {
-              setCustomCssFilter(filterKey);
+            activeFilterName={customCssFilter || selectedFilterId}
+            onSelectFilter={(preset) => {
+              setCustomCssFilter(preset.cssFilter);
+              setSelectedFilterId(preset.name);
               setIsEffectsDrawerOpen(false);
             }}
           />

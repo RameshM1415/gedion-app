@@ -391,8 +391,7 @@ export async function updateReelLikesInSupabase(
       .from('reels')
       .update({ likes_count: safeCount })
       .eq('id', reelId)
-      .then(() => {})
-      .catch(() => {});
+      .then(() => {}, () => {});
   } catch (err) {
     console.warn('Exception updating likes in Supabase posts:', err);
   }

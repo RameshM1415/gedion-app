@@ -83,7 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   // Countdown timer for OTP resend
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     if (view === 'verify_otp' && resendCountdown > 0) {
       timer = setTimeout(() => setResendCountdown((c) => c - 1), 1000);
     } else if (view === 'verify_otp' && resendCountdown === 0) {
