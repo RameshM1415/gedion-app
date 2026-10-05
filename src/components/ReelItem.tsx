@@ -380,14 +380,27 @@ export const ReelItem: React.FC<ReelItemProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Background Ambience / Poster fallback */}
+      {/* Pure Dark/Black Video Loading Skeleton & Poster Fallback (#000000 / #0a0a0a) */}
       <div
-        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-700 ${
-          videoLoaded && !videoError && !isImage ? 'opacity-0' : 'opacity-100'
+        className={`absolute inset-0 bg-[#000000] transition-opacity duration-500 ${
+          videoLoaded && !videoError && !isImage ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
-        style={{ backgroundImage: `url(${reel.poster || mediaSource})` }}
       >
-        <div className={`absolute inset-0 bg-gradient-to-t ${reel.fallbackGradient} opacity-80`} />
+        {reel.poster ? (
+          <img
+            src={reel.poster}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="relative w-full h-full bg-[#0a0a0a] flex items-center justify-center overflow-hidden">
+            {/* Subtle dark shimmer */}
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/[0.03] to-transparent" />
+            <div className="w-10 h-10 rounded-full border border-zinc-800 bg-zinc-900/60 flex items-center justify-center shadow-lg">
+              <div className="w-4 h-4 rounded-full border-2 border-zinc-600 border-t-transparent animate-spin" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Fullscreen Media (Photo or Video) */}

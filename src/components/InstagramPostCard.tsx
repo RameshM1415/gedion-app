@@ -18,8 +18,11 @@ import { useTheme } from '../context/ThemeContext';
 export interface InstagramPostCardProps {
   reel: Reel;
   currentUser?: AuthUser | null;
-  isMuted: boolean;
-  onToggleMute: () => void;
+  isActive?: boolean;
+  isSoundOn?: boolean;
+  onToggleSound?: () => void;
+  isMuted?: boolean;
+  onToggleMute?: () => void;
   onToggleLike: (reelId: string) => void;
   onToggleBookmark: (reelId: string) => void;
   onOpenComments: (reelId: string) => void;
@@ -31,7 +34,10 @@ export interface InstagramPostCardProps {
 export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
   reel,
   currentUser,
-  isMuted,
+  isActive = true,
+  isSoundOn,
+  onToggleSound,
+  isMuted = false,
   onToggleMute,
   onToggleLike,
   onToggleBookmark,
@@ -50,7 +56,25 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
   );
   const [isBookmarked, setIsBookmarked] = useState(Boolean(reel.isBookmarked));
   const [showHeartBurst, setShowHeartBurst] = useState(false);
+  const [mediaLoaded, setMediaLoaded] = useState(false);
   const lastTapRef = useRef<number>(0);
+
+  // Determine effective sound: ONLY active video can play sound
+  const effectiveSound = Boolean(isActive && (isSoundOn !== undefined ? isSoundOn : !isMuted));
+
+  // Sync video playback: Pause when inactive or scrolled away; single active audio only
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isActive) {
+      video.muted = !effectiveSound;
+      video.play().catch(() => {});
+    } else {
+      video.muted = true;
+      video.pause();
+    }
+  }, [isActive, effectiveSound]);
 
   // Keep in sync with parent props
   useEffect(() => {
@@ -79,7 +103,6 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
     const DOUBLE_TAP_DELAY = 320;
 
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double-tap detected
       if (!isLiked) {
         setIsLiked(true);
         const nextCount = likesCount + 1;
@@ -101,6 +124,15 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
     onToggleBookmark(reel.id);
     if (onShowToast) {
       onShowToast(next ? 'Saved to bookmarks' : 'Removed from bookmarks');
+    }
+  };
+
+  const handleSpeakerClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleSound) {
+      onToggleSound();
+    } else if (onToggleMute) {
+      onToggleMute();
     }
   };
 
@@ -172,43 +204,55 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
         </button>
       </div>
 
-      {/* 2. MEDIA SECTION: Full-width responsive photo or auto-playing video with audio toggle */}
+      {/* 2. MEDIA SECTION: Full-width responsive photo/video with pure dark loading state */}
       <div
         onClick={handleDoubleTap}
-        className="relative w-full aspect-[4/5] bg-zinc-950 flex items-center justify-center overflow-hidden cursor-pointer select-none"
+        className="relative w-full aspect-[4/5] bg-[#000000] flex items-center justify-center overflow-hidden cursor-pointer select-none"
       >
+        {/* Pure solid dark #000000 / #0a0a0a loading skeleton - Zero blue flash */}
+        {!mediaLoaded && (
+          <div className="absolute inset-0 bg-[#0a0a0a] flex items-center justify-center z-0 overflow-hidden">
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/[0.03] to-transparent" />
+            <div className="w-9 h-9 rounded-full border border-zinc-800 bg-zinc-900/60 flex items-center justify-center shadow-lg">
+              <div className="w-3.5 h-3.5 rounded-full border-2 border-zinc-600 border-t-transparent animate-spin" />
+            </div>
+          </div>
+        )}
+
         {isVideo && reel.videoUrl ? (
           <video
             ref={videoRef}
             src={reel.videoUrl}
             poster={reel.poster}
-            autoPlay
             loop
-            muted={isMuted}
+            muted={!effectiveSound}
             playsInline
-            className="w-full h-full object-cover"
+            onLoadedData={() => setMediaLoaded(true)}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${
+              mediaLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
           />
         ) : (
           <img
             src={mediaUrl}
             alt={reel.caption || 'Instagram Post'}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover transition-opacity duration-300 ${
+              mediaLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            onLoad={() => setMediaLoaded(true)}
             loading="lazy"
           />
         )}
 
-        {/* Audio Mute/Unmute toggle pill at bottom right */}
+        {/* Audio Mute/Unmute speaker toggle pill at bottom right */}
         {isVideo && (
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleMute();
-            }}
-            aria-label={isMuted ? 'Unmute video' : 'Mute video'}
+            onClick={handleSpeakerClick}
+            aria-label={effectiveSound ? 'Mute video' : 'Unmute video'}
             className="absolute bottom-3 right-3 p-1.5 rounded-full bg-black/65 text-white/90 backdrop-blur-md hover:bg-black/85 transition-colors z-10 cursor-pointer"
           >
-            {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+            {effectiveSound ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
         )}
 

@@ -637,9 +637,20 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* 3. EXPLORE & SEARCH */}
-          {navTab === 'explore' && (
-            <ExploreView onClose={() => setNavTab('home')} reels={reels} />
+          {/* 3. EXPLORE & SEARCH (2nd Tab in BottomNav) */}
+          {(navTab === 'explore' || (navTab as string) === 'search') && (
+            <ExploreView
+              onClose={() => setNavTab('home')}
+              reels={reels}
+              onOpenProfile={() => {
+                setChatTargetUser(null);
+                setNavTab('profile');
+              }}
+              onOpenChatWithUser={(username) => {
+                setChatTargetUser(username);
+                setNavTab('messages');
+              }}
+            />
           )}
 
           {/* 4. CREATE / RECORD */}

@@ -110,6 +110,12 @@ html, body, #root {
 }
 
 /* Audio visualizer bar animations */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 @keyframes barBounce1 {
   0%, 100% { height: 4px; }
   50% { height: 16px; }

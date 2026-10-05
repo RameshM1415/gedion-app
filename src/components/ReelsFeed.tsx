@@ -223,8 +223,73 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeIndex, feedReels.length, onStoriesVisibilityChange]);
 
+  // Pull-to-refresh state in Reels viewer
+  const [pullY, setPullY] = useState(0);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (containerRef.current && containerRef.current.scrollTop <= 2 && activeIndex === 0) {
+      touchStartYRef.current = e.touches[0].clientY;
+    } else {
+      touchStartYRef.current = null;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartYRef.current === null || isPullRefreshing) return;
+    const diff = e.touches[0].clientY - touchStartYRef.current;
+    if (diff > 0 && containerRef.current && containerRef.current.scrollTop <= 2 && activeIndex === 0) {
+      setPullY(Math.min(diff * 0.4, 70));
+    } else {
+      setPullY(0);
+    }
+  };
+
+  const handleTouchEnd = async () => {
+    if (pullY > 40 && !isPullRefreshing) {
+      setIsPullRefreshing(true);
+      setPullY(45);
+      await fetchReels(true);
+      setTimeout(() => {
+        setIsPullRefreshing(false);
+        setPullY(0);
+      }, 500);
+    } else {
+      setPullY(0);
+    }
+    touchStartYRef.current = null;
+  };
+
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#07070c] select-none">
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className="relative h-full w-full overflow-hidden bg-[#000000] select-none"
+    >
+      {/* Pull-to-refresh circular ring spinner (Sub-header level) */}
+      {(pullY > 0 || isPullRefreshing) && (
+        <div
+          style={{
+            height: `${pullY}px`,
+            opacity: pullY > 5 || isPullRefreshing ? 1 : 0,
+          }}
+          className="absolute top-14 inset-x-0 z-40 flex items-center justify-center pointer-events-none transition-all duration-200"
+        >
+          <div className="flex items-center justify-center p-2 rounded-full bg-black/85 border border-zinc-800 shadow-xl backdrop-blur-md">
+            <div
+              className={`w-5 h-5 rounded-full border-2 border-zinc-700/60 border-t-[#0095f6] border-r-[#0095f6] ${
+                isPullRefreshing ? 'animate-spin' : ''
+              }`}
+              style={{
+                transform: isPullRefreshing ? undefined : `rotate(${pullY * 6}deg)`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Network glitch retry toast */}
       {fetchGlitch && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-950/90 border border-amber-500/50 text-[11px] font-bold text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.5)] backdrop-blur-md">

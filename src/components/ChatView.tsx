@@ -22,6 +22,13 @@ import { Conversation, ChatMessage } from '../types';
 import { INITIAL_CONVERSATIONS } from '../data/mockConversations';
 import { InstantCameraModal } from './InstantCameraModal';
 import { compressImageFile } from '../utils/mediaUtils';
+import {
+  searchSupabaseUsers,
+  sendSupabaseMessage,
+  supabase,
+  SearchedUser,
+} from '../utils/supabaseClient';
+import { getStoredAuth } from '../utils/authStorage';
 
 interface ChatViewProps {
   onClose: () => void;
@@ -51,6 +58,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchedFriends, setSearchedFriends] = useState<SearchedUser[]>([]);
+  const [isSearchingFriends, setIsSearchingFriends] = useState(false);
+  const currentUser = getStoredAuth();
+
   const [messageText, setMessageText] = useState('');
   const [mediaAttachment, setMediaAttachment] = useState<{
     url: string;
@@ -63,6 +74,114 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Real-time friend search via Supabase
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setSearchedFriends([]);
+      setIsSearchingFriends(false);
+      return;
+    }
+    setIsSearchingFriends(true);
+    const timer = setTimeout(() => {
+      searchSupabaseUsers(trimmed)
+        .then((users) => {
+          setSearchedFriends(users);
+        })
+        .finally(() => {
+          setIsSearchingFriends(false);
+        });
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Supabase Realtime Listener for incoming live messages
+  useEffect(() => {
+    if (!activeConversationId) return;
+
+    const channel = supabase
+      .channel(`chat_room_${activeConversationId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const row = payload.new as any;
+          if (row && row.conversation_id === activeConversationId) {
+            const myName = (currentUser?.username || 'me').toLowerCase();
+            const senderLower = String(row.sender_id || '').toLowerCase();
+            if (senderLower !== myName && senderLower !== 'me') {
+              const incomingMsg: ChatMessage = {
+                id: String(row.id || Date.now()),
+                senderId: row.sender_id,
+                text: row.text || '',
+                mediaUrl: row.media_url,
+                mediaType: row.media_type,
+                timestamp: 'Just now',
+                isRead: true,
+                status: 'delivered',
+              };
+              setConversations((prev) =>
+                prev.map((c) => {
+                  if (c.id === activeConversationId && !c.messages.some((m) => m.id === incomingMsg.id)) {
+                    return {
+                      ...c,
+                      lastMessage: incomingMsg.text || 'Sent attachment',
+                      lastMessageTime: 'Just now',
+                      messages: [...c.messages, incomingMsg],
+                    };
+                  }
+                  return c;
+                })
+              );
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeConversationId, currentUser]);
+
+  const handleStartChatWithUser = (user: { username: string; name?: string; avatar?: string }) => {
+    const cleanUser = user.username.replace('@', '');
+    const existing = conversations.find(
+      (c) => c.username.toLowerCase() === cleanUser.toLowerCase()
+    );
+    if (existing) {
+      setActiveConversationId(existing.id);
+    } else {
+      const newConv: Conversation = {
+        id: `conv-${cleanUser}-${Date.now()}`,
+        userId: cleanUser,
+        username: cleanUser,
+        displayName: user.name || cleanUser,
+        avatar:
+          user.avatar ||
+          `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUser}&backgroundColor=06b6d4,a855f7`,
+        isVerified: false,
+        isOnline: true,
+        lastSeen: 'Active now',
+        lastMessage: 'Started a new conversation',
+        lastMessageTime: 'Just now',
+        unreadCount: 0,
+        messages: [
+          {
+            id: `m-init-${Date.now()}`,
+            senderId: cleanUser,
+            text: `Hey! Thanks for connecting on GediOn 🚀`,
+            timestamp: 'Just now',
+            isRead: true,
+          },
+        ],
+      };
+      setConversations((prev) => [newConv, ...prev]);
+      setActiveConversationId(newConv.id);
+    }
+    setSearchQuery('');
+  };
 
   // Save to localStorage whenever conversations update
   useEffect(() => {
@@ -343,6 +462,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
     );
 
     setMessageText('');
+
+    // Sync to Supabase messages table in background
+    sendSupabaseMessage({
+      conversationId: currentConvId,
+      senderId: currentUser?.username || 'me',
+      recipientId: recipientUser,
+      text: messageText.trim(),
+    }).catch(() => {});
+
     triggerSimulatedReply(currentConvId, recipientUser, 'text');
   };
 
@@ -472,6 +600,50 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </button>
                 ))}
             </div>
+
+            {/* Real-time Found Friends Section when Searching */}
+            {searchQuery.trim() && (
+              <div className="px-4 py-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-cyan-400 tracking-wider uppercase">
+                    Find Friends on GediOn
+                  </span>
+                  {isSearchingFriends && <Loader2 size={13} className="animate-spin text-cyan-400" />}
+                </div>
+
+                {searchedFriends.length > 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] divide-y divide-white/5 mb-3 overflow-hidden">
+                    {searchedFriends.map((friend) => (
+                      <div
+                        key={`friend-${friend.username}`}
+                        onClick={() => handleStartChatWithUser(friend)}
+                        className="flex items-center justify-between p-3 hover:bg-white/5 cursor-pointer transition-colors active:scale-[0.99]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={friend.avatar}
+                            alt={friend.name}
+                            className="w-10 h-10 rounded-full object-cover border border-white/15"
+                          />
+                          <div>
+                            <p className="text-xs font-bold text-white">{friend.username}</p>
+                            <p className="text-[11px] text-zinc-400">{friend.name}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="px-3 py-1 rounded-xl bg-[#0095f6] text-white text-xs font-bold shadow-md hover:bg-[#1877f2] cursor-pointer"
+                        >
+                          Chat
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : !isSearchingFriends ? (
+                  <p className="text-xs text-zinc-500 mb-3 px-1">No creators found matching &quot;{searchQuery}&quot;</p>
+                ) : null}
+              </div>
+            )}
 
             {/* Messages Section Header */}
             <div className="flex items-center justify-between px-4 pt-3 pb-1">

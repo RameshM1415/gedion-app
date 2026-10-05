@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Home, Film, PlusSquare, Send, User, RotateCw } from 'lucide-react';
+import { Home, Search, PlusSquare, Film, User, RotateCw } from 'lucide-react';
 import { NavTab } from '../types';
 import { useTheme } from '../context/ThemeContext';
 
@@ -96,6 +96,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   if (!isVisible) return null;
 
+  const isSearchActive = activeTab === 'explore' || (activeTab as string) === 'search';
+
   return (
     <nav
       className={`fixed bottom-0 inset-x-0 z-40 max-w-[440px] mx-auto h-[50px] border-t px-5 flex items-center justify-between select-none transition-colors ${
@@ -108,7 +110,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         onClick={handleHomeClick}
         title="Double-tap to refresh feed"
         aria-label="Home Feed - Double tap to refresh"
-        className="flex items-center justify-center p-2 transition-transform active:scale-85 relative"
+        className="flex items-center justify-center p-2 transition-transform active:scale-85 relative cursor-pointer"
       >
         <div
           className={`transition-transform duration-700 ease-out flex items-center justify-center ${
@@ -131,12 +133,48 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         </div>
       </button>
 
-      {/* 2. Reels (▶️) - Dedicated full-screen vertical reels tab */}
+      {/* 2. Search (🔍) - Explore & User Search Tab */}
+      <button
+        type="button"
+        onClick={() => onSelectTab('explore')}
+        aria-label="Search & Explore"
+        className="flex items-center justify-center p-2 transition-transform active:scale-90 cursor-pointer"
+      >
+        <Search
+          size={24}
+          strokeWidth={isSearchActive ? 2.8 : 1.8}
+          className={`transition-all ${
+            isSearchActive
+              ? isDark
+                ? 'text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.6)]'
+                : 'text-black drop-shadow-[0_0_6px_rgba(0,0,0,0.3)]'
+              : isDark
+              ? 'text-zinc-400 hover:text-white'
+              : 'text-zinc-600 hover:text-black'
+          }`}
+        />
+      </button>
+
+      {/* 3. Create / Upload (+) - Opens Create modal */}
+      <button
+        type="button"
+        onClick={() => onSelectTab('create')}
+        aria-label="Create Post or Reel"
+        className="flex items-center justify-center p-2 transition-transform active:scale-90 cursor-pointer"
+      >
+        <PlusSquare
+          size={24}
+          strokeWidth={activeTab === 'create' ? 2.5 : 1.8}
+          className={activeTab === 'create' ? 'text-[#0095f6]' : ''}
+        />
+      </button>
+
+      {/* 4. Reels (▶️) - Dedicated full-screen vertical reels tab */}
       <button
         type="button"
         onClick={() => onSelectTab('reels')}
         aria-label="Reels Player"
-        className="flex items-center justify-center p-2 transition-transform active:scale-90"
+        className="flex items-center justify-center p-2 transition-transform active:scale-90 cursor-pointer"
       >
         <Film
           size={24}
@@ -145,44 +183,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         />
       </button>
 
-      {/* 3. Create (+) - Opens Create modal */}
-      <button
-        type="button"
-        onClick={() => onSelectTab('create')}
-        aria-label="Create Post or Reel"
-        className="flex items-center justify-center p-2 transition-transform active:scale-90"
-      >
-        <PlusSquare
-          size={24}
-          strokeWidth={activeTab === 'create' ? 2.5 : 1.8}
-        />
-      </button>
-
-      {/* 4. Direct Messages (✈️) */}
-      <button
-        type="button"
-        onClick={() => onSelectTab('messages')}
-        aria-label="Direct Messages"
-        className="relative flex items-center justify-center p-2 transition-transform active:scale-90"
-      >
-        <Send
-          size={23}
-          strokeWidth={activeTab === 'messages' ? 2.5 : 1.8}
-          className={`-rotate-12 translate-y-[-1px] ${
-            activeTab === 'messages' ? 'fill-current' : ''
-          }`}
-        />
-        {hasUnreadMessages && (
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-black" />
-        )}
-      </button>
-
       {/* 5. Profile (Avatar) */}
       <button
         type="button"
         onClick={() => onSelectTab('profile')}
         aria-label="Profile"
-        className="flex items-center justify-center p-1.5 transition-transform active:scale-90"
+        className="flex items-center justify-center p-1.5 transition-transform active:scale-90 cursor-pointer"
       >
         <div
           className={`w-6 h-6 rounded-full overflow-hidden transition-all ${

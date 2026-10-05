@@ -190,7 +190,7 @@ export function mapSupabaseRowToReel(row: SupabaseReelRow): Reel {
     isVerified: false,
     isFollowing: false,
     videoUrl: videoUrl,
-    fallbackGradient: 'from-cyan-950 via-purple-950 to-black',
+    fallbackGradient: 'from-black via-[#0a0a0a] to-black',
     poster: '',
     caption: row.caption || '',
     tags: parsedTags,
@@ -709,5 +709,123 @@ export async function deleteReelFromSupabase(reelId: string): Promise<boolean> {
   }
 
   return deleted;
+}
+
+export interface SearchedUser {
+  id: string;
+  username: string;
+  name: string;
+  avatar: string;
+  bio?: string;
+  isFollowing?: boolean;
+}
+
+/**
+ * Search users in real-time from Supabase profiles and posts creators
+ */
+export async function searchSupabaseUsers(query: string): Promise<SearchedUser[]> {
+  const clean = query.trim().replace(/^@/, '');
+  if (!clean) return [];
+
+  try {
+    const results: SearchedUser[] = [];
+    const seen = new Set<string>();
+
+    // 1. Query Supabase 'profiles' table
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, name, avatar_url, avatar, bio')
+        .or(`username.ilike.%${clean}%,full_name.ilike.%${clean}%,name.ilike.%${clean}%`)
+        .limit(20);
+
+      if (!error && Array.isArray(data)) {
+        for (const row of data) {
+          if (!row.username) continue;
+          const uLower = row.username.toLowerCase();
+          if (seen.has(uLower)) continue;
+          seen.add(uLower);
+          results.push({
+            id: String(row.id || row.username),
+            username: row.username,
+            name: row.full_name || row.name || row.username,
+            avatar:
+              row.avatar_url ||
+              row.avatar ||
+              `https://api.dicebear.com/7.x/bottts/svg?seed=${row.username}&backgroundColor=06b6d4,a855f7`,
+            bio: row.bio || '',
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Profiles query note:', e);
+    }
+
+    // 2. Also search distinct creators from posts/reels table
+    try {
+      const { data: postsData } = await supabase
+        .from('posts')
+        .select('creator_name, user_id, creator_avatar')
+        .ilike('creator_name', `%${clean}%`)
+        .limit(20);
+
+      if (Array.isArray(postsData)) {
+        for (const p of postsData) {
+          if (!p.creator_name) continue;
+          const uName = p.creator_name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+          if (seen.has(uName)) continue;
+          seen.add(uName);
+          results.push({
+            id: String(p.user_id || uName),
+            username: uName,
+            name: p.creator_name,
+            avatar:
+              p.creator_avatar ||
+              `https://api.dicebear.com/7.x/bottts/svg?seed=${uName}&backgroundColor=06b6d4,a855f7`,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Posts search note:', e);
+    }
+
+    return results;
+  } catch (err) {
+    console.warn('Error searching users in Supabase:', err);
+    return [];
+  }
+}
+
+/**
+ * Send real-time direct message to Supabase 'messages' table
+ */
+export async function sendSupabaseMessage(msg: {
+  conversationId: string;
+  senderId: string;
+  recipientId: string;
+  text: string;
+  mediaUrl?: string;
+  mediaType?: string;
+}): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('messages').insert([
+      {
+        conversation_id: msg.conversationId,
+        sender_id: msg.senderId,
+        recipient_id: msg.recipientId,
+        text: msg.text,
+        media_url: msg.mediaUrl,
+        media_type: msg.mediaType,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+    if (error) {
+      console.warn('Supabase messages insert note:', error.message);
+    }
+    return !error;
+  } catch (err) {
+    console.warn('Exception sending message to Supabase:', err);
+    return false;
+  }
 }
 

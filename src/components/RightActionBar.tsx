@@ -132,12 +132,12 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
       <div className="flex flex-col items-center">
         <motion.button
           onClick={onOpenComments}
-          whileTap={{ scale: 0.85 }}
+          whileTap={{ scale: 0.8 }}
           whileHover={{ scale: 1.1 }}
           aria-label="Open comments"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-black/35 backdrop-blur-md border border-white/10 transition-colors hover:bg-black/50"
+          className="flex h-9 w-9 items-center justify-center bg-transparent border-0 outline-none cursor-pointer transition-transform"
         >
-          <MessageCircle size={22} className="text-white/90" strokeWidth={2} />
+          <MessageCircle size={24} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.65)]" strokeWidth={2} />
         </motion.button>
         <span className="mt-0.5 text-[11px] font-semibold tracking-tight text-white/95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
           {formatCount(reel.commentsCount)}
@@ -151,18 +151,18 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
           whileTap={{ scale: 0.8 }}
           whileHover={{ scale: 1.1 }}
           aria-label="Bookmark video"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-black/35 backdrop-blur-md border border-white/10 transition-colors hover:bg-black/50"
+          className="flex h-9 w-9 items-center justify-center bg-transparent border-0 outline-none cursor-pointer transition-transform"
         >
           <motion.div
             animate={reel.isBookmarked ? { rotate: [0, -15, 15, 0], scale: [1, 1.2, 1] } : {}}
             transition={{ duration: 0.3 }}
           >
             <Bookmark
-              size={21}
-              className={`transition-all duration-300 ${
+              size={23}
+              className={`transition-all duration-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.65)] ${
                 reel.isBookmarked
                   ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]'
-                  : 'text-white/90'
+                  : 'text-white'
               }`}
               strokeWidth={reel.isBookmarked ? 2.5 : 2}
             />
@@ -177,12 +177,12 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
       <div className="flex flex-col items-center">
         <motion.button
           onClick={onOpenShare}
-          whileTap={{ scale: 0.85 }}
+          whileTap={{ scale: 0.8 }}
           whileHover={{ scale: 1.1 }}
           aria-label="Share video"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-black/35 backdrop-blur-md border border-white/10 transition-colors hover:bg-black/50"
+          className="flex h-9 w-9 items-center justify-center bg-transparent border-0 outline-none cursor-pointer transition-transform"
         >
-          <Share2 size={21} className="text-white/90 ml-0.5" strokeWidth={2} />
+          <Share2 size={23} className="text-white ml-0.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.65)]" strokeWidth={2} />
         </motion.button>
         <span className="mt-0.5 text-[11px] font-semibold tracking-tight text-white/95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
           {formatCount(reel.sharesCount)}
@@ -203,9 +203,9 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
             whileTap={{ scale: 0.8 }}
             whileHover={{ scale: 1.1 }}
             aria-label="Reel options"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:border-white/30 transition-colors"
+            className="flex h-8 w-8 items-center justify-center bg-transparent border-0 outline-none text-white/90 hover:text-white cursor-pointer transition-transform"
           >
-            <MoreVertical size={16} />
+            <MoreVertical size={18} className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.65)]" />
           </motion.button>
         </div>
       )}
