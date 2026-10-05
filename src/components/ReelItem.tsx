@@ -43,7 +43,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
   const [showPulse, setShowPulse] = useState(false);
   const [pulseIsPlaying, setPulseIsPlaying] = useState(false);
   const [hearts, setHearts] = useState<FloatingHeartItem[]>([]);
-  const [neonHearts, setNeonHearts] = useState<{ id: number; x: number; y: number }[]>([]);
+  const [doubleTapHearts, setDoubleTapHearts] = useState<{ id: number }[]>([]);
   const [followToast, setFollowToast] = useState<string | null>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
@@ -210,24 +210,17 @@ export const ReelItem: React.FC<ReelItemProps> = ({
     updateReelLikesInSupabase(reel.id, nextCount, nextIsLiked).catch(() => {});
   };
 
-  // 1. Double-Tap Neon Heart Burst & Optimistic Like Toggle
-  const triggerDoubleTapHeart = (clientX?: number, clientY?: number, containerRect?: DOMRect) => {
+  // 1. Double-Tap Instagram Dual-Tone Heart Burst & Optimistic Like Toggle
+  const triggerDoubleTapHeart = () => {
     const heartId = Date.now() + Math.random();
-    const x = containerRect && clientX ? clientX - containerRect.left : undefined;
-    const y = containerRect && clientY ? clientY - containerRect.top : undefined;
 
-    // Trigger centered floating heart burst animation (#ff0055)
-    setNeonHearts((prev) => [...prev, { id: heartId, x: x || 0, y: y || 0 }]);
+    // Trigger center Instagram pop-up heart burst animation
+    setDoubleTapHearts((prev) => [...prev, { id: heartId }]);
 
-    // Trigger ambient floating particle hearts around tap location
-    const newHeart: FloatingHeartItem = {
-      id: heartId,
-      x: x || (containerRect ? containerRect.width / 2 : 200),
-      y: y || (containerRect ? containerRect.height / 2 : 350),
-      rotation: (Math.random() - 0.5) * 40,
-      scale: 1,
-    };
-    setHearts((prev) => [...prev, newHeart]);
+    // Auto-cleanup safety timer
+    setTimeout(() => {
+      setDoubleTapHearts((prev) => prev.filter((p) => p.id !== heartId));
+    }, 850);
 
     // Haptic feedback if supported on mobile
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
@@ -260,7 +253,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
         singleTapTimeoutRef.current = null;
       }
       lastTapTimeRef.current = 0;
-      triggerDoubleTapHeart(currentX, currentY, e.currentTarget.getBoundingClientRect());
+      triggerDoubleTapHeart();
     } else {
       // Single tap candidate
       lastTapTimeRef.current = now;
@@ -444,31 +437,32 @@ export const ReelItem: React.FC<ReelItemProps> = ({
       {/* Center Pulse Play/Pause Indicator */}
       <CenterPulseIcon isPlaying={pulseIsPlaying} visible={showPulse} />
 
-      {/* 1. Double-Tap Centered Floating Heart Burst Animation (#ff0055) */}
-      {neonHearts.map((pop) => (
+      {/* 1. Double-Tap Clean Center Instagram Dual-Tone Heart Burst (100% transparent video background) */}
+      {doubleTapHearts.map((pop) => (
         <div
           key={pop.id}
-          onAnimationEnd={() => setNeonHearts((prev) => prev.filter((p) => p.id !== pop.id))}
-          className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 animate-neon-heart-pop"
+          onAnimationEnd={() => setDoubleTapHearts((prev) => prev.filter((p) => p.id !== pop.id))}
+          className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 animate-ig-heart-burst select-none"
         >
-          <div className="relative flex items-center justify-center pointer-events-none">
-            {/* Diffused Neon Glow Aura */}
-            <div className="absolute h-40 w-40 rounded-full bg-[#ff0055]/45 blur-3xl animate-ping" />
-            <div className="absolute h-32 w-32 rounded-full bg-[#ff0055]/35 blur-xl shadow-[0_0_65px_#ff0055]" />
-
-            {/* Glowing Neon Red/Magenta (#ff0055) Heart SVG */}
-            <svg
-              viewBox="0 0 24 24"
-              className="h-28 w-28 fill-[#ff0055] text-white drop-shadow-[0_0_35px_#ff0055] drop-shadow-[0_0_70px_#ff0055]"
-            >
-              <path
-                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                fill="#ff0055"
-                stroke="#ffffff"
-                strokeWidth="1.2"
-              />
-            </svg>
-          </div>
+          <svg
+            viewBox="0 0 24 24"
+            className="h-28 w-28 drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)] drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] select-none pointer-events-none"
+          >
+            <defs>
+              <linearGradient id={`ig-heart-grad-${pop.id}`} x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#fd1d1d" />
+                <stop offset="45%" stopColor="#e1306c" />
+                <stop offset="100%" stopColor="#833ab4" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+              fill={`url(#ig-heart-grad-${pop.id})`}
+              stroke="#ffffff"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
       ))}
 

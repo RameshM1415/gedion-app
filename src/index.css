@@ -164,43 +164,34 @@ html, body, #root {
   animation: storyGlowPulse 2.6s ease-in-out infinite;
 }
 
-/* Double-Tap Center Neon Pink Heart Pop Animation (Scale 0 to 1.3, Glowing box-shadow, 800ms fade-out) */
-@keyframes neonHeartPop {
+/* Double-Tap Center Instagram Dual-Tone Heart Burst Animation (Crystal-clear background, ~800ms) */
+@keyframes igHeartBurst {
   0% {
-    transform: translate(-50%, -50%) scale(0);
+    transform: translate(-50%, -50%) scale(0) rotate(-12deg);
     opacity: 0;
-    box-shadow: 0 0 0 rgba(236, 72, 153, 0);
-    filter: drop-shadow(0 0 0 rgba(244, 63, 94, 0));
   }
-  20% {
-    transform: translate(-50%, -50%) scale(1.3);
+  22% {
+    transform: translate(-50%, -50%) scale(1.22) rotate(4deg);
     opacity: 1;
-    box-shadow: 0 0 45px rgba(236, 72, 153, 0.9), 0 0 80px rgba(244, 63, 94, 0.7);
-    filter: drop-shadow(0 0 35px #f43f5e) drop-shadow(0 0 65px #ec4899);
   }
-  40% {
-    transform: translate(-50%, -50%) scale(1.0);
+  38% {
+    transform: translate(-50%, -50%) scale(1.0) rotate(0deg);
     opacity: 1;
-    box-shadow: 0 0 35px rgba(236, 72, 153, 0.8), 0 0 60px rgba(244, 63, 94, 0.6);
-    filter: drop-shadow(0 0 30px #f43f5e) drop-shadow(0 0 50px #ec4899);
   }
-  70% {
-    transform: translate(-50%, -50%) scale(1.05);
-    opacity: 0.9;
-    box-shadow: 0 0 25px rgba(236, 72, 153, 0.5);
-    filter: drop-shadow(0 0 20px #f43f5e);
+  68% {
+    transform: translate(-50%, -50%) scale(1.0) translateY(0px) rotate(0deg);
+    opacity: 1;
   }
   100% {
-    transform: translate(-50%, -50%) scale(0.7);
+    transform: translate(-50%, -50%) scale(0.8) translateY(-26px) rotate(0deg);
     opacity: 0;
-    box-shadow: 0 0 0 rgba(236, 72, 153, 0);
-    filter: drop-shadow(0 0 0 rgba(244, 63, 94, 0));
   }
 }
 
-.animate-neon-heart-pop {
-  animation: neonHeartPop 800ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-  will-change: transform, opacity, filter, box-shadow;
+.animate-ig-heart-burst {
+  animation: igHeartBurst 800ms cubic-bezier(0.2, 0.85, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  pointer-events: none;
 }
 
 /* Creator follow badge bounce animation */
