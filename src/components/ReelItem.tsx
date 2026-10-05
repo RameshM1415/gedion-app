@@ -4,6 +4,7 @@ import { RightActionBar } from './RightActionBar';
 import { BottomInfoBar } from './BottomInfoBar';
 import { CenterPulseIcon } from './CenterPulseIcon';
 import { FloatingHearts, FloatingHeartItem } from './FloatingHearts';
+import { LikesAndPlaysModal } from './LikesAndPlaysModal';
 import { supabase, updateReelLikesInSupabase } from '../utils/supabaseClient';
 
 import { AuthUser } from '../utils/authStorage';
@@ -17,6 +18,7 @@ interface ReelItemProps {
   onOpenShare: () => void;
   onOpenReport?: () => void;
   onOpenOptions?: () => void;
+  onOpenLikes?: () => void;
   currentUser?: AuthUser | null;
   onRequireAuth?: (promptMessage: string) => void;
 }
@@ -30,6 +32,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
   onOpenShare,
   onOpenReport,
   onOpenOptions,
+  onOpenLikes,
   currentUser,
   onRequireAuth,
 }) => {
@@ -44,6 +47,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
   const [followToast, setFollowToast] = useState<string | null>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [isLocalLikesOpen, setIsLocalLikesOpen] = useState(false);
 
   // Instant Optimistic UI state for Like status and Like counter
   const [optimisticLiked, setOptimisticLiked] = useState<boolean>(Boolean(reel.isLiked));
@@ -494,10 +498,31 @@ export const ReelItem: React.FC<ReelItemProps> = ({
         onOpenShare={onOpenShare}
         onOpenReport={onOpenReport}
         onOpenOptions={onOpenOptions}
+        onOpenLikesSheet={() => {
+          if (onOpenLikes) {
+            onOpenLikes();
+          } else {
+            setIsLocalLikesOpen(true);
+          }
+        }}
       />
 
       {/* Bottom Creator & Audio Info Bar */}
       <BottomInfoBar reel={reel} />
+
+      {/* Fallback Likes and Plays Modal */}
+      {!onOpenLikes && (
+        <LikesAndPlaysModal
+          isOpen={isLocalLikesOpen}
+          onClose={() => setIsLocalLikesOpen(false)}
+          reel={{
+            ...reel,
+            isLiked: optimisticLiked,
+            likesCount: optimisticLikesCount,
+          }}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 };

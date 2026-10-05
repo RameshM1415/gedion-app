@@ -14,6 +14,7 @@ import { ReelOptionsMenu } from './components/ReelOptionsMenu';
 import { CommentDrawer } from './components/CommentDrawer';
 import { ShareSheet } from './components/ShareSheet';
 import { ReportModal } from './components/ReportModal';
+import { LikesAndPlaysModal } from './components/LikesAndPlaysModal';
 import { ExploreView, ActivityView, ProfileScreen, ProfileView } from './components/SecondaryViews';
 import { ChatView } from './components/ChatView';
 import { SplashScreen } from './components/SplashScreen';
@@ -220,6 +221,7 @@ export const App: React.FC = () => {
   const [commentReelId, setCommentReelId] = useState<string | null>(null);
   const [shareReelId, setShareReelId] = useState<string | null>(null);
   const [reportReelId, setReportReelId] = useState<string | null>(null);
+  const [likesReelId, setLikesReelId] = useState<string | null>(null);
   const [reportToast, setReportToast] = useState<string | null>(null);
 
   // Hidden reported reels in current session
@@ -236,12 +238,14 @@ export const App: React.FC = () => {
   const isCommentsOpen = Boolean(commentReelId);
   const isShareOpen = Boolean(shareReelId);
   const isReportOpen = Boolean(reportReelId);
+  const isLikesOpen = Boolean(likesReelId);
   const isCreateOpen = navTab === 'create';
-  const isSheetOpen = isCommentsOpen || isShareOpen || isReportOpen;
+  const isSheetOpen = isCommentsOpen || isShareOpen || isReportOpen || isLikesOpen;
 
   const activeCommentReel = reels.find((r) => r.id === commentReelId) || reels[0];
   const activeShareReel = reels.find((r) => r.id === shareReelId) || reels[0];
   const activeReportReel = reels.find((r) => r.id === reportReelId) || reels[0];
+  const activeLikesReel = reels.find((r) => r.id === likesReelId) || reels[0];
 
   // Filter reels based on Following vs For You and exclude hidden reported reels
   const displayedReels = reels
@@ -333,7 +337,7 @@ export const App: React.FC = () => {
   };
 
   // Feature 1: Home Button Double-Tap to Refresh & Scroll-to-Top (Live Supabase 'posts' query)
-    const handleHomeRefresh = async () => {
+  const handleHomeRefresh = async () => {
     setIsStoriesVisible(true);
     setIsRefreshing(true);
     setScrollToTopTrigger((prev) => prev + 1);
@@ -342,6 +346,8 @@ export const App: React.FC = () => {
       if (Array.isArray(cloudReels)) {
         handleReelsLoaded(cloudReels);
       }
+      setFeedToast('✨ Feed updated');
+      setTimeout(() => setFeedToast(null), 2200);
     } catch (err) {
       console.warn('Error refreshing posts from Supabase:', err);
     } finally {
@@ -532,6 +538,7 @@ export const App: React.FC = () => {
                 onOpenShare={handleOpenShare}
                 onOpenReport={handleOpenReport}
                 onOpenOptions={handleOpenOptions}
+                onOpenLikes={(reelId) => setLikesReelId(reelId)}
                 scrollToTopTrigger={scrollToTopTrigger}
                 onReelsLoaded={handleReelsLoaded}
                 onNewRealtimeReel={handleNewRealtimeReel}
@@ -570,7 +577,7 @@ export const App: React.FC = () => {
                 <div
                   className={`transition-all duration-300 overflow-hidden ${
                     isStoriesVisible
-                      ? 'opacity-100 max-h-[110px] pointer-events-auto'
+                      ? 'opacity-100 max-h-[125px] pointer-events-auto'
                       : 'opacity-0 max-h-0 pointer-events-none -translate-y-2'
                   }`}
                 >
@@ -686,6 +693,21 @@ export const App: React.FC = () => {
         </AnimatePresence>
 
         <AnimatePresence>
+          {isRefreshing && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -15, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="absolute top-16 left-1/2 -translate-x-1/2 z-[95] flex items-center gap-2.5 px-4 py-2 rounded-full bg-black/90 border border-white/20 text-xs font-bold text-white shadow-2xl backdrop-blur-xl pointer-events-none"
+            >
+              <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-cyan-400 animate-spin" />
+              <span>Refreshing feed...</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {feedToast && (
             <motion.div
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -795,6 +817,14 @@ export const App: React.FC = () => {
             onReportSubmitted={handleReportSubmitted}
           />
         )}
+
+        {/* Likes and Plays Modal Bottom Sheet */}
+        <LikesAndPlaysModal
+          isOpen={isLikesOpen}
+          onClose={() => setLikesReelId(null)}
+          reel={activeLikesReel}
+          currentUser={currentUser}
+        />
 
         {/* Floating Bottom Navigation Bar (Hidden when drawer, share, edit profile, or create camera is open) */}
         <BottomNav

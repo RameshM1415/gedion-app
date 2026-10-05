@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Home, Film, PlusSquare, Send, User } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Home, Film, PlusSquare, Send, User, RotateCw } from 'lucide-react';
 import { NavTab } from '../types';
 import { useTheme } from '../context/ThemeContext';
 
@@ -17,12 +17,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
   onSelectTab,
   onHomeRefresh,
+  isRefreshing = false,
   hasUnreadMessages = false,
   hasUnreadNotifications = false,
   isVisible = true,
 }) => {
   const { isDark } = useTheme();
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [isDoubleTapSpinning, setIsDoubleTapSpinning] = useState(false);
+
+  // Timing references for high-precision double-tap detection
+  const lastHomeTapRef = useRef<number>(0);
+  const singleTapTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const updateAvatar = () => {
@@ -40,8 +46,53 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     return () => {
       window.removeEventListener('storage', updateAvatar);
       window.removeEventListener('profile-updated', updateAvatar);
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+      }
     };
   }, []);
+
+  const handleHomeClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const now = Date.now();
+    const DOUBLE_TAP_THRESHOLD = 320; // 320ms window for double tap
+
+    if (now - lastHomeTapRef.current < DOUBLE_TAP_THRESHOLD) {
+      // 1. DOUBLE-TAP DETECTED!
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
+      lastHomeTapRef.current = 0;
+
+      // Haptic feedback
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate([25, 40, 25]);
+        } catch {}
+      }
+
+      // Trigger 360-degree rotation spin animation
+      setIsDoubleTapSpinning(true);
+      setTimeout(() => setIsDoubleTapSpinning(false), 900);
+
+      if (activeTab !== 'home') {
+        onSelectTab('home');
+      }
+      // Trigger full feed refresh from Supabase & reset feed scroll to top
+      onHomeRefresh?.();
+    } else {
+      // 2. Single tap candidate
+      lastHomeTapRef.current = now;
+      if (activeTab !== 'home') {
+        onSelectTab('home');
+      } else {
+        singleTapTimerRef.current = window.setTimeout(() => {
+          onHomeRefresh?.();
+        }, DOUBLE_TAP_THRESHOLD);
+      }
+    }
+  };
 
   if (!isVisible) return null;
 
@@ -51,24 +102,33 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         isDark ? 'bg-black border-[#262626] text-white' : 'bg-white border-[#efefef] text-black'
       }`}
     >
-      {/* 1. Home (🏠) */}
+      {/* 1. Home (🏠) with Double-Tap Refresh & Spin Animation */}
       <button
         type="button"
-        onClick={() => {
-          if (activeTab === 'home' && onHomeRefresh) {
-            onHomeRefresh();
-          } else {
-            onSelectTab('home');
-          }
-        }}
-        aria-label="Home Feed"
-        className="flex items-center justify-center p-2 transition-transform active:scale-90"
+        onClick={handleHomeClick}
+        title="Double-tap to refresh feed"
+        aria-label="Home Feed - Double tap to refresh"
+        className="flex items-center justify-center p-2 transition-transform active:scale-85 relative"
       >
-        <Home
-          size={24}
-          strokeWidth={activeTab === 'home' ? 2.5 : 1.8}
-          className={activeTab === 'home' ? 'fill-current' : ''}
-        />
+        <div
+          className={`transition-transform duration-700 ease-out flex items-center justify-center ${
+            isDoubleTapSpinning || isRefreshing ? 'rotate-[360deg] scale-110' : ''
+          }`}
+        >
+          {isRefreshing ? (
+            <RotateCw
+              size={23}
+              strokeWidth={2.5}
+              className="animate-spin text-cyan-400"
+            />
+          ) : (
+            <Home
+              size={24}
+              strokeWidth={activeTab === 'home' ? 2.5 : 1.8}
+              className={activeTab === 'home' ? 'fill-current' : ''}
+            />
+          )}
+        </div>
       </button>
 
       {/* 2. Reels (▶️) - Dedicated full-screen vertical reels tab */}
