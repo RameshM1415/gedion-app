@@ -84,7 +84,9 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
               containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
             }
           }}
-          className="font-script text-[30px] font-normal leading-none pt-1 select-none cursor-pointer tracking-normal hover:opacity-90 active:scale-95 transition-all"
+          className={`font-sans font-black text-[23px] sm:text-[25px] tracking-[-0.04em] select-none cursor-pointer active:scale-95 transition-all ${
+            isDark ? 'text-white' : 'text-zinc-950'
+          }`}
         >
           GediOn
         </span>

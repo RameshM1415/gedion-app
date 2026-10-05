@@ -621,7 +621,7 @@ export const App: React.FC = () => {
                 <div
                   className={`transition-all duration-300 overflow-hidden ${
                     isStoriesVisible
-                      ? 'opacity-100 max-h-[125px] pointer-events-auto'
+                      ? 'opacity-100 max-h-[140px] pointer-events-auto'
                       : 'opacity-0 max-h-0 pointer-events-none -translate-y-2'
                   }`}
                 >

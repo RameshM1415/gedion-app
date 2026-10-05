@@ -18,11 +18,11 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 }) => {
   return (
     <header className="w-full h-[48px] px-4 flex items-center justify-between pointer-events-none select-none">
-      {/* Left: Sleek brand title "GediOn" styled in classic script typography */}
+      {/* Left: Sleek modern brand title "GediOn" styled in bold, elegant typography */}
       <div className="flex items-center w-24 shrink-0 pointer-events-auto">
         <span
           onClick={() => onTabChange?.('forYou')}
-          className="font-script text-[30px] font-normal leading-none pt-1 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)] cursor-pointer select-none tracking-normal hover:opacity-90 active:scale-95 transition-all"
+          className="font-sans font-black text-[23px] sm:text-[25px] tracking-[-0.04em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)] cursor-pointer select-none active:scale-95 transition-all"
         >
           GediOn
         </span>
