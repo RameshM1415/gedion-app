@@ -35,6 +35,8 @@ export interface Reel {
   themeAccent: string; // e.g. '#a855f7', '#06b6d4', '#ec4899', '#10b981'
   badgeText?: string;
   mediaType?: 'video' | 'image';
+  location?: string;
+  timestamp?: string;
   comments: CommentItem[];
 }
 

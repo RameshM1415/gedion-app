@@ -22,7 +22,8 @@ import { AuthModal } from './components/AuthModal';
 import { OnboardingVideoModal } from './components/OnboardingVideoModal';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { VideoUploadModal } from './components/VideoUploadModal';
-import { supabase, fetchSupabaseReels, deleteReelFromSupabase } from './utils/supabaseClient';
+import { supabase, fetchSupabaseReels, deleteReelFromSupabase, updateReelLikesInSupabase } from './utils/supabaseClient';
+import { InstagramFeed } from './components/InstagramFeed';
 import { useTheme } from './context/ThemeContext';
 import {
   AuthUser,
@@ -256,12 +257,18 @@ export const App: React.FC = () => {
     setReels((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
   };
 
+  const handleToggleMute = useCallback(() => {
+    setIsMuted((prev) => !prev);
+  }, []);
+
   const handleToggleLike = useCallback((reelId: string) => {
     setReels((prev) =>
       prev.map((r) => {
         if (r.id === reelId) {
           const nextLiked = !r.isLiked;
           const nextCount = nextLiked ? (r.likesCount || 0) + 1 : Math.max(0, (r.likesCount || 0) - 1);
+          // Sync with Supabase in background
+          updateReelLikesInSupabase(r.id, nextCount, nextLiked).catch(() => {});
           return { ...r, isLiked: nextLiked, likesCount: nextCount };
         }
         return r;
@@ -527,8 +534,45 @@ export const App: React.FC = () => {
       >
         {/* Main Tab Views */}
         <div className="relative h-full w-full overflow-hidden">
-          {/* 1. HOME TAB (🏠) & REELS TAB (▶️): Full-bleed, edge-to-edge vertical Reels player */}
-          {(navTab === 'home' || navTab === 'reels') && (
+          {/* 1. HOME TAB (🏠): Instagram-Style Post Feed (Default Landing Screen) */}
+          {navTab === 'home' && (
+            <div className="relative h-full w-full overflow-hidden">
+              <InstagramFeed
+                reels={displayedReels}
+                stories={stories}
+                currentUser={currentUser}
+                isMuted={isMuted}
+                onToggleMute={handleToggleMute}
+                onToggleLike={handleToggleLike}
+                onToggleBookmark={handleToggleBookmark}
+                onOpenComments={handleOpenComments}
+                onOpenShare={handleOpenShare}
+                onOpenOptions={handleOpenOptions}
+                onOpenYourStory={handleOpenAddStory}
+                onSelectStory={handleSelectStory}
+                onOpenCreate={() => {
+                  if (!currentUser) {
+                    setAuthPromptMessage('Sign in to post photos and videos to GediOn!');
+                    setIsAuthModalOpen(true);
+                    return;
+                  }
+                  setCreateMode('POST');
+                  setNavTab('create');
+                }}
+                onOpenActivity={() => setNavTab('activity')}
+                onOpenMessages={() => setNavTab('messages')}
+                onShowToast={(msg) => {
+                  setFeedToast(msg);
+                  setTimeout(() => setFeedToast(null), 2500);
+                }}
+                hasUserStory={hasUserStory}
+                scrollToTopTrigger={scrollToTopTrigger}
+              />
+            </div>
+          )}
+
+          {/* 2. REELS TAB (▶️): Full-bleed, edge-to-edge vertical Reels player */}
+          {navTab === 'reels' && (
             <div className="relative h-full w-full overflow-hidden bg-black text-white">
               <ReelsFeed
                 reels={displayedReels}

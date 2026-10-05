@@ -8,8 +8,8 @@ import {
   MoreHorizontal,
   Volume2,
   VolumeX,
-  Repeat,
   Music,
+  MapPin,
 } from 'lucide-react';
 import { Reel } from '../types';
 import { AuthUser } from '../utils/authStorage';
@@ -44,49 +44,58 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Local optimistic state
-  const [isLiked, setIsLiked] = useState(reel.isLiked);
-  const [likesCount, setLikesCount] = useState(reel.likesCount || 0);
-  const [isBookmarked, setIsBookmarked] = useState(reel.isBookmarked);
+  const [isLiked, setIsLiked] = useState(Boolean(reel.isLiked));
+  const [likesCount, setLikesCount] = useState<number>(
+    typeof reel.likesCount === 'number' ? reel.likesCount : 0
+  );
+  const [isBookmarked, setIsBookmarked] = useState(Boolean(reel.isBookmarked));
   const [showHeartBurst, setShowHeartBurst] = useState(false);
-  const [isReposted, setIsReposted] = useState(false);
   const lastTapRef = useRef<number>(0);
 
-  // Keep in sync with prop updates
+  // Keep in sync with parent props
   useEffect(() => {
-    setIsLiked(reel.isLiked);
-    setLikesCount(reel.likesCount || 0);
+    setIsLiked(Boolean(reel.isLiked));
+    setLikesCount(typeof reel.likesCount === 'number' ? reel.likesCount : 0);
   }, [reel.isLiked, reel.likesCount]);
 
   useEffect(() => {
-    setIsBookmarked(reel.isBookmarked);
+    setIsBookmarked(Boolean(reel.isBookmarked));
   }, [reel.isBookmarked]);
 
-  const handleLike = () => {
-    const nextState = !isLiked;
-    setIsLiked(nextState);
-    setLikesCount((prev) => (nextState ? prev + 1 : Math.max(0, prev - 1)));
+  // Working Like toggle with instant optimistic UI + Supabase sync
+  const handleLike = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const nextLiked = !isLiked;
+    setIsLiked(nextLiked);
+    const nextCount = nextLiked ? likesCount + 1 : Math.max(0, likesCount - 1);
+    setLikesCount(nextCount);
     onToggleLike(reel.id);
   };
 
+  // Double-tap like on photo/video media
   const handleDoubleTap = (e: React.MouseEvent) => {
     e.stopPropagation();
     const now = Date.now();
-    if (now - lastTapRef.current < 320) {
-      // Double tap detected
+    const DOUBLE_TAP_DELAY = 320;
+
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      // Double-tap detected
       if (!isLiked) {
         setIsLiked(true);
-        setLikesCount((prev) => prev + 1);
+        const nextCount = likesCount + 1;
+        setLikesCount(nextCount);
         onToggleLike(reel.id);
       }
       setShowHeartBurst(true);
-      setTimeout(() => setShowHeartBurst(false), 900);
+      setTimeout(() => setShowHeartBurst(false), 700);
       lastTapRef.current = 0;
     } else {
       lastTapRef.current = now;
     }
   };
 
-  const handleBookmark = () => {
+  const handleBookmark = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const next = !isBookmarked;
     setIsBookmarked(next);
     onToggleBookmark(reel.id);
@@ -95,16 +104,7 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
     }
   };
 
-  const handleRepost = () => {
-    setIsReposted((prev) => !prev);
-    if (onShowToast) {
-      onShowToast(!isReposted ? 'Reposted to your feed 🔄' : 'Repost removed');
-    }
-  };
-
   const isVideo = reel.mediaType === 'video' || (!reel.mediaType && Boolean(reel.videoUrl));
-
-  // Determine media URL
   const mediaUrl = reel.videoUrl || reel.poster;
 
   return (
@@ -113,10 +113,10 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
         isDark ? 'bg-black border-[#262626] text-white' : 'bg-white border-[#efefef] text-black'
       }`}
     >
-      {/* 1. AUTHOR ROW: Circular profile photo, @username, audio tag, and 3-dots (•••) option menu */}
+      {/* 1. POST HEADER: User Avatar, Username, location / audio, and 3-dots menu button */}
       <div className="flex items-center justify-between px-3.5 py-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
-          {/* Avatar with subtle IG ring */}
+          {/* Avatar with subtle signature Instagram gradient ring */}
           <div className="relative p-[1.5px] rounded-full bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888] shrink-0">
             <div className={`p-[1px] rounded-full ${isDark ? 'bg-black' : 'bg-white'}`}>
               <img
@@ -131,7 +131,7 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
             </div>
           </div>
 
-          {/* User details & Audio tag */}
+          {/* User details */}
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold tracking-tight truncate cursor-pointer hover:underline">
@@ -141,14 +141,21 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
                 <span className="text-[#0095f6] text-[10px] font-black">●</span>
               )}
             </div>
-            {(reel.audioTitle || reel.audioArtist) && (
+
+            {/* Optional Location or Audio tagline */}
+            {reel.location ? (
+              <div className="flex items-center gap-1 text-[11px] text-zinc-500 truncate mt-0.5">
+                <MapPin size={10} className="shrink-0" />
+                <span className="truncate">{reel.location}</span>
+              </div>
+            ) : (reel.audioTitle || reel.audioArtist) ? (
               <div className="flex items-center gap-1 text-[11px] text-zinc-500 truncate mt-0.5">
                 <Music size={10} className="shrink-0" />
                 <span className="truncate max-w-[190px]">
                   {reel.audioTitle || 'Original Audio'} • {reel.audioArtist || reel.displayName}
                 </span>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -157,7 +164,7 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
           type="button"
           onClick={() => onOpenOptions(reel)}
           aria-label="More options"
-          className={`p-1.5 rounded-full transition-transform active:scale-90 hover:opacity-75 ${
+          className={`p-1.5 rounded-full transition-transform active:scale-90 hover:opacity-75 cursor-pointer ${
             isDark ? 'text-zinc-300' : 'text-zinc-700'
           }`}
         >
@@ -165,10 +172,10 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
         </button>
       </div>
 
-      {/* 2. MEDIA CONTAINER: Responsive aspect ratio (1:1 / 4:5 / 9:16) with audio toggle tap */}
+      {/* 2. MEDIA SECTION: Full-width responsive photo or auto-playing video with audio toggle */}
       <div
         onClick={handleDoubleTap}
-        className="relative w-full aspect-[4/5] bg-zinc-950 flex items-center justify-center overflow-hidden cursor-pointer"
+        className="relative w-full aspect-[4/5] bg-zinc-950 flex items-center justify-center overflow-hidden cursor-pointer select-none"
       >
         {isVideo && reel.videoUrl ? (
           <video
@@ -199,23 +206,38 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
               onToggleMute();
             }}
             aria-label={isMuted ? 'Unmute video' : 'Mute video'}
-            className="absolute bottom-3 right-3 p-1.5 rounded-full bg-black/65 text-white/90 backdrop-blur-md hover:bg-black/85 transition-colors z-10"
+            className="absolute bottom-3 right-3 p-1.5 rounded-full bg-black/65 text-white/90 backdrop-blur-md hover:bg-black/85 transition-colors z-10 cursor-pointer"
           >
             {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
           </button>
         )}
 
-        {/* Heart Burst Animation on Double Tap */}
+        {/* Refined Double-Tap Compact Red Heart Pop Animation (Solid Red #EF4444, white outline, 66px, 700ms) */}
         <AnimatePresence>
           {showHeartBurst && (
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: [0, 1.25, 1], opacity: [0, 1, 0.95] }}
-              exit={{ scale: 1.4, opacity: 0 }}
-              transition={{ duration: 0.65, ease: 'easeOut' }}
-              className="pointer-events-none absolute inset-0 flex items-center justify-center z-20"
+              animate={{ scale: [0, 1.12, 1.0], opacity: [0, 1, 1] }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{
+                duration: 0.68,
+                times: [0, 0.4, 0.65],
+                ease: 'easeOut',
+              }}
+              className="pointer-events-none absolute inset-0 flex items-center justify-center z-30 select-none"
             >
-              <Heart size={88} className="fill-rose-500 text-rose-500 drop-shadow-xl" />
+              <svg
+                viewBox="0 0 24 24"
+                className="w-16 h-16 sm:w-[68px] sm:h-[68px] drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)] select-none pointer-events-none"
+              >
+                <path
+                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                  fill="#EF4444"
+                  stroke="#ffffff"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </motion.div>
           )}
         </AnimatePresence>
@@ -223,9 +245,9 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
 
       {/* 3. ACTION BAR DIRECTLY BELOW MEDIA */}
       <div className="flex items-center justify-between px-3.5 pt-2.5 pb-1">
-        {/* Left: Heart, Comment bubble, Share paper plane, Repost icon */}
+        {/* Left Side: Heart (Like), Speech Bubble (Comment), Paper Plane / Share */}
         <div className="flex items-center gap-4">
-          {/* Like */}
+          {/* Like Button */}
           <button
             type="button"
             onClick={handleLike}
@@ -234,51 +256,43 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
           >
             <Heart
               size={24}
-              strokeWidth={1.8}
+              strokeWidth={1.9}
               className={`transition-colors ${
-                isLiked ? 'fill-rose-500 text-rose-500 scale-105' : isDark ? 'text-white' : 'text-black'
+                isLiked
+                  ? 'fill-[#EF4444] text-[#EF4444] scale-105'
+                  : isDark
+                  ? 'text-white hover:text-zinc-300'
+                  : 'text-black hover:text-zinc-600'
               }`}
             />
           </button>
 
-          {/* Comment */}
+          {/* Comment Button (Speech Bubble) */}
           <button
             type="button"
             onClick={() => onOpenComments(reel.id)}
             aria-label="Comments"
             className={`transition-transform active:scale-75 cursor-pointer ${
-              isDark ? 'text-white' : 'text-black'
+              isDark ? 'text-white hover:text-zinc-300' : 'text-black hover:text-zinc-600'
             }`}
           >
-            <MessageCircle size={24} strokeWidth={1.8} />
+            <MessageCircle size={24} strokeWidth={1.9} />
           </button>
 
-          {/* Share */}
+          {/* Share Button (Paper Plane) */}
           <button
             type="button"
             onClick={() => onOpenShare(reel.id)}
             aria-label="Share"
             className={`transition-transform active:scale-75 cursor-pointer ${
-              isDark ? 'text-white' : 'text-black'
+              isDark ? 'text-white hover:text-zinc-300' : 'text-black hover:text-zinc-600'
             }`}
           >
-            <Send size={22} strokeWidth={1.8} className="-rotate-12 translate-y-[-1px]" />
-          </button>
-
-          {/* Repost */}
-          <button
-            type="button"
-            onClick={handleRepost}
-            aria-label="Repost"
-            className={`transition-transform active:scale-75 cursor-pointer ${
-              isReposted ? 'text-emerald-500' : isDark ? 'text-white' : 'text-black'
-            }`}
-          >
-            <Repeat size={21} strokeWidth={1.8} />
+            <Send size={22} strokeWidth={1.9} className="-rotate-12 translate-y-[-1px]" />
           </button>
         </div>
 
-        {/* Right: Bookmark / Save icon */}
+        {/* Right Side: Bookmark / Save icon */}
         <button
           type="button"
           onClick={handleBookmark}
@@ -287,7 +301,7 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
         >
           <Bookmark
             size={23}
-            strokeWidth={1.8}
+            strokeWidth={1.9}
             className={`${
               isBookmarked ? 'fill-current' : ''
             } ${isDark ? 'text-white' : 'text-black'}`}
@@ -295,39 +309,34 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
         </button>
       </div>
 
-      {/* 4. ENGAGEMENT SECTION: "Liked by X and others", bold username with caption, and comments trigger */}
+      {/* 4. REAL-TIME COUNTS & DETAILS SECTION */}
       <div className="px-3.5 pb-3 space-y-1 text-xs">
-        {/* Likes Count */}
-        <div className="font-normal tracking-tight text-[13px]">
+        {/* Prominent Real-time Like Count */}
+        <div className="font-bold tracking-tight text-[13px] pt-0.5">
           {likesCount > 0 ? (
             <span>
-              Liked by <span className="font-bold cursor-pointer">{reel.displayName || 'ankur_codes'}</span> and{' '}
-              <span className="font-bold cursor-pointer">
-                {likesCount > 1
-                  ? `${(likesCount - 1).toLocaleString()} others`
-                  : 'others'}
-              </span>
+              {likesCount.toLocaleString()} {likesCount === 1 ? 'like' : 'likes'}
             </span>
           ) : (
-            <span className="text-zinc-500 font-normal">Be the first to like this</span>
+            <span className="font-normal text-zinc-500">Be the first to like this</span>
           )}
         </div>
 
-        {/* Caption */}
+        {/* Post Caption with Bold Username */}
         {reel.caption && (
-          <p className="leading-snug">
-            <span className="font-bold mr-1.5 cursor-pointer">{reel.username}</span>
+          <p className="leading-snug pt-0.5">
+            <span className="font-bold mr-1.5 cursor-pointer hover:underline">{reel.username}</span>
             <span className={isDark ? 'text-zinc-200' : 'text-zinc-800'}>
               {reel.caption}
             </span>
           </p>
         )}
 
-        {/* View all comments trigger */}
+        {/* View all comments link */}
         <button
           type="button"
           onClick={() => onOpenComments(reel.id)}
-          className={`block text-[11.5px] mt-0.5 cursor-pointer hover:underline ${
+          className={`block text-[11.5px] pt-0.5 cursor-pointer hover:underline ${
             isDark ? 'text-zinc-400' : 'text-zinc-500'
           }`}
         >
@@ -336,9 +345,9 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
             : 'Add a comment...'}
         </button>
 
-        {/* Relative Timestamp */}
+        {/* Timestamp */}
         <p className="text-[10px] uppercase tracking-wider text-zinc-500 pt-0.5 font-medium">
-          2 hours ago
+          {reel.timestamp || '2 hours ago'}
         </p>
       </div>
     </article>
