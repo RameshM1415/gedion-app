@@ -17,9 +17,11 @@ import {
   PlayCircle,
   Sun,
   Moon,
+  Headset,
 } from 'lucide-react';
 import { AuthUser, clearStoredAuth, DEFAULT_AUTH_USER } from '../utils/authStorage';
 import { useTheme } from '../context/ThemeContext';
+import { SupportModal } from './SupportModal';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -45,6 +47,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isPauseNotifications, setIsPauseNotifications] = useState(false);
   const [isSoundAlerts, setIsSoundAlerts] = useState(true);
   const [isDataSaver, setIsDataSaver] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -389,6 +392,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
+        {/* Section: Help & Support 24/7 */}
+        <div className="space-y-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 px-1">
+            Help & Support
+          </p>
+
+          <div
+            className={`rounded-2xl border divide-y overflow-hidden transition-colors ${
+              isDark
+                ? 'bg-zinc-950 border-[#262626] divide-[#262626]'
+                : 'bg-white border-[#efefef] divide-[#efefef]'
+            }`}
+          >
+            <div
+              onClick={() => setIsSupportOpen(true)}
+              className={`flex items-center justify-between p-3.5 cursor-pointer transition-colors active:scale-[0.99] ${
+                isDark ? 'hover:bg-zinc-900' : 'hover:bg-zinc-50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-[#0095f6] to-[#00c6ff] text-white shadow-sm">
+                  <Headset size={18} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold">Help & Support 24/7</p>
+                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                      Online
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500">We are always here to assist you</p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-zinc-500" />
+            </div>
+          </div>
+        </div>
+
         {/* Section: Log Out */}
         <div className="pt-2">
           <button
@@ -404,6 +445,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </p>
         </div>
       </div>
+
+      {/* 24/7 Priority Support Modal Sheet */}
+      <SupportModal
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+        currentUser={currentUser}
+        onShowToast={onShowToast}
+      />
     </motion.div>
   );
 };
