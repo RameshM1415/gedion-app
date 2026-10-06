@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Home, Search, PlusSquare, Film, User, RotateCw } from 'lucide-react';
+import { Home, Search, PlusSquare, Clapperboard, User, RotateCw } from 'lucide-react';
 import { NavTab } from '../types';
 import { useTheme } from '../context/ThemeContext';
 
@@ -149,23 +149,21 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         </div>
       </button>
 
-      {/* 2. Search (🔍) - Explore & User Search Tab */}
+      {/* 2. Video / Reels (Clapperboard icon) - Opens full-screen vertical Reels */}
       <button
         type="button"
-        onClick={() => onSelectTab('explore')}
-        aria-label="Search & Explore"
+        onClick={() => onSelectTab('reels')}
+        aria-label="Reels Player"
         className="flex items-center justify-center p-2 transition-transform active:scale-90 cursor-pointer"
       >
-        <Search
+        <Clapperboard
           size={24}
-          strokeWidth={isSearchActive ? 2.8 : 1.8}
-          className={`transition-all ${
-            isSearchActive
-              ? isReelsTab || isDark
-                ? 'text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.6)]'
-                : 'text-black drop-shadow-[0_0_6px_rgba(0,0,0,0.3)]'
+          strokeWidth={isReelsTab ? 2.5 : 1.8}
+          className={
+            isReelsTab
+              ? 'fill-white text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.7)]'
               : defaultIconColor
-          }`}
+          }
         />
       </button>
 
@@ -187,21 +185,23 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         />
       </button>
 
-      {/* 4. Reels (▶️) - Dedicated full-screen vertical reels tab */}
+      {/* 4. Search (🔍) - Explore & User Search Tab */}
       <button
         type="button"
-        onClick={() => onSelectTab('reels')}
-        aria-label="Reels Player"
+        onClick={() => onSelectTab('explore')}
+        aria-label="Search & Explore"
         className="flex items-center justify-center p-2 transition-transform active:scale-90 cursor-pointer"
       >
-        <Film
+        <Search
           size={24}
-          strokeWidth={isReelsTab ? 2.5 : 1.8}
-          className={
-            isReelsTab
-              ? 'fill-white text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.7)]'
+          strokeWidth={isSearchActive ? 2.8 : 1.8}
+          className={`transition-all ${
+            isSearchActive
+              ? isReelsTab || isDark
+                ? 'text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.6)]'
+                : 'text-black drop-shadow-[0_0_6px_rgba(0,0,0,0.3)]'
               : defaultIconColor
-          }
+          }`}
         />
       </button>
 

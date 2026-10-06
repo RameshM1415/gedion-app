@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -94,6 +94,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [activeTab, setActiveTab] = useState<'reels' | 'tagged'>('reels');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Pull-to-refresh state
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [pullY, setPullY] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const touchStartYRef = useRef<number | null>(null);
+  const isDraggingPullRef = useRef(false);
+
   // Sync profile details from Supabase when modal opens
   useEffect(() => {
     if (!isOpen || !username) return;
@@ -168,6 +175,97 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     onOpenChatWithUser?.(username);
   };
 
+  // Re-fetch profile data on pull-to-refresh
+  const handleRefresh = async () => {
+    if (!username) return;
+    setIsRefreshing(true);
+    const startTime = Date.now();
+    try {
+      const clean = username.toLowerCase().replace(/^@/, '');
+      const profile = await fetchSupabaseProfile(clean);
+      if (profile) {
+        if (profile.name) setDisplayName(profile.name);
+        if (profile.avatar) setAvatar(profile.avatar);
+        if (profile.bio) setBio(profile.bio);
+        if (profile.link) setWebsite(profile.link);
+      }
+      const metrics = await fetchUserMetricsFromSupabase(undefined, clean);
+      if (metrics) {
+        if (metrics.followersCount > 0) setFollowersCount(metrics.followersCount);
+        if (metrics.followingCount > 0) setFollowingCount(metrics.followingCount);
+      }
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 750) {
+        await new Promise((r) => setTimeout(r, 750 - elapsed));
+      }
+    } catch (err) {
+      console.warn('Error refreshing profile:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (containerRef.current && containerRef.current.scrollTop <= 2) {
+      touchStartYRef.current = e.touches[0].clientY;
+      isDraggingPullRef.current = true;
+    } else {
+      touchStartYRef.current = null;
+      isDraggingPullRef.current = false;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingPullRef.current || touchStartYRef.current === null || isRefreshing) return;
+    const diff = e.touches[0].clientY - touchStartYRef.current;
+    if (diff > 0 && containerRef.current && containerRef.current.scrollTop <= 2) {
+      setPullY(Math.min(diff * 0.45, 60));
+    } else {
+      setPullY(0);
+    }
+  };
+
+  const handleTouchEnd = async () => {
+    if (pullY > 38 && !isRefreshing) {
+      setPullY(0);
+      await handleRefresh();
+    } else {
+      setPullY(0);
+    }
+    touchStartYRef.current = null;
+    isDraggingPullRef.current = false;
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (containerRef.current && containerRef.current.scrollTop <= 2) {
+      touchStartYRef.current = e.clientY;
+      isDraggingPullRef.current = true;
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingPullRef.current || touchStartYRef.current === null || isRefreshing) return;
+    const diff = e.clientY - touchStartYRef.current;
+    if (diff > 0 && containerRef.current && containerRef.current.scrollTop <= 2) {
+      setPullY(Math.min(diff * 0.4, 60));
+    } else {
+      setPullY(0);
+    }
+  };
+
+  const handleMouseUp = async () => {
+    if (isDraggingPullRef.current) {
+      if (pullY > 38 && !isRefreshing) {
+        setPullY(0);
+        await handleRefresh();
+      } else {
+        setPullY(0);
+      }
+      touchStartYRef.current = null;
+      isDraggingPullRef.current = false;
+    }
+  };
+
   const handleShareProfile = async () => {
     if (!username) return;
     const url = window.location.href;
@@ -233,7 +331,37 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         </header>
 
         {/* Scrollable Profile Body */}
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-16">
+        <div
+          ref={containerRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          className="flex-1 overflow-y-auto no-scrollbar pb-16"
+        >
+          {/* INSTAGRAM-STYLE SPINNER (Centered under Profile Header) */}
+          <div
+            className="w-full flex items-center justify-center overflow-hidden transition-[height,opacity] duration-300 ease-out pointer-events-none select-none"
+            style={{
+              height: isRefreshing ? '52px' : pullY > 0 ? `${Math.min(pullY, 56)}px` : '0px',
+              opacity: isRefreshing ? 1 : pullY > 10 ? Math.min((pullY - 10) / 25, 1) : 0,
+            }}
+          >
+            <div className="flex items-center justify-center py-2.5">
+              <div
+                className={`w-[28px] h-[28px] rounded-full border-[2.5px] border-zinc-800 border-t-white border-r-white ${
+                  isRefreshing ? 'animate-spin' : ''
+                }`}
+                style={{
+                  transform: isRefreshing ? undefined : `rotate(${pullY * 6}deg)`,
+                  animationDuration: '0.75s',
+                }}
+              />
+            </div>
+          </div>
           {/* Creator Profile Header: Avatar & Counts */}
           <div className="px-4 pt-4 pb-3">
             <div className="flex items-center justify-between gap-4">

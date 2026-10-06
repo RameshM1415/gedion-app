@@ -329,7 +329,7 @@ export const App: React.FC = () => {
     await deleteReelFromSupabase(reelId);
   }, []);
 
-  // Listen for reel deletion across all views
+  // Listen for reel deletion and reel updates across all views
   useEffect(() => {
     const handleReelDeleted = (e: Event) => {
       const customEvent = e as CustomEvent<{ reelId: string }>;
@@ -338,9 +338,30 @@ export const App: React.FC = () => {
         setReels((prev) => prev.filter((r) => r.id !== deletedId));
       }
     };
+
+    const handleReelUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ reelId: string; caption: string; tags?: string[] }>;
+      const { reelId, caption, tags } = customEvent.detail || {};
+      if (reelId) {
+        setReels((prev) =>
+          prev.map((r) =>
+            r.id === reelId
+              ? {
+                  ...r,
+                  caption,
+                  tags: tags && tags.length > 0 ? tags : r.tags,
+                }
+              : r
+          )
+        );
+      }
+    };
+
     window.addEventListener('reel-deleted', handleReelDeleted);
+    window.addEventListener('reel-updated', handleReelUpdated);
     return () => {
       window.removeEventListener('reel-deleted', handleReelDeleted);
+      window.removeEventListener('reel-updated', handleReelUpdated);
     };
   }, []);
 

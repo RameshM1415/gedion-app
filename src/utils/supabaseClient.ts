@@ -711,6 +711,99 @@ export async function deleteReelFromSupabase(reelId: string): Promise<boolean> {
   return deleted;
 }
 
+/**
+ * Update reel metadata (caption, title, tags) in Supabase 'posts' and 'reels' tables,
+ * and sync local browser storage.
+ */
+export async function updateReelDetailsInSupabase(
+  reelId: string,
+  updates: { caption: string; title?: string; tags?: string[] }
+): Promise<boolean> {
+  if (!reelId) return false;
+  let success = false;
+  const numId = Number(reelId);
+
+  // Extract hashtags from caption if not explicitly provided
+  const tags =
+    updates.tags && updates.tags.length > 0
+      ? updates.tags
+      : updates.caption.match(/#[a-zA-Z0-9_]+/g) || [];
+
+  // 1. Update in 'posts' table
+  try {
+    const { error: postErr } = await supabase
+      .from('posts')
+      .update({
+        caption: updates.caption,
+        title: updates.title || updates.caption,
+        tags: tags,
+      })
+      .eq('id', reelId);
+    if (!postErr) success = true;
+
+    if (!isNaN(numId)) {
+      await supabase
+        .from('posts')
+        .update({
+          caption: updates.caption,
+          title: updates.title || updates.caption,
+          tags: tags,
+        })
+        .eq('id', numId);
+    }
+  } catch (err) {
+    console.warn('Note updating Supabase posts:', err);
+  }
+
+  // 2. Update in 'reels' table
+  try {
+    const { error: reelErr } = await supabase
+      .from('reels')
+      .update({
+        caption: updates.caption,
+        title: updates.title || updates.caption,
+        tags: tags,
+      })
+      .eq('id', reelId);
+    if (!reelErr) success = true;
+
+    if (!isNaN(numId)) {
+      await supabase
+        .from('reels')
+        .update({
+          caption: updates.caption,
+          title: updates.title || updates.caption,
+          tags: tags,
+        })
+        .eq('id', numId);
+    }
+  } catch (err) {
+    console.warn('Note updating Supabase reels:', err);
+  }
+
+  // 3. Update in local storage
+  try {
+    const raw = localStorage.getItem('gedion_custom_reels');
+    if (raw) {
+      const parsed: Reel[] = JSON.parse(raw);
+      const updated = parsed.map((r) =>
+        r.id === reelId
+          ? {
+              ...r,
+              caption: updates.caption,
+              tags: tags,
+            }
+          : r
+      );
+      localStorage.setItem('gedion_custom_reels', JSON.stringify(updated));
+    }
+  } catch (err) {
+    console.warn('Note updating local custom reels:', err);
+  }
+
+  return success;
+}
+
 export interface SearchedUser {
   id: string;
   username: string;

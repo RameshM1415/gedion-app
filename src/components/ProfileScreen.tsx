@@ -27,6 +27,8 @@ import {
   LogIn,
   MoreVertical,
   Trash2,
+  Pencil,
+  AlertTriangle,
 } from 'lucide-react';
 import { Reel } from '../types';
 import { compressImageFile } from '../utils/mediaUtils';
@@ -46,6 +48,7 @@ import {
   fetchUserMetricsFromSupabase,
   fetchUserPostsFromSupabase,
   deleteReelFromSupabase,
+  updateReelDetailsInSupabase,
   UserProfileData,
 } from '../utils/supabaseClient';
 
@@ -144,6 +147,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   // Dynamic Wallet Balance state (defaults strictly to 0)
   const [walletBalance, setWalletBalance] = useState<number>(0);
 
+  // Instagram-Style Pull-to-Refresh State & Logic
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [pullY, setPullY] = useState(0);
+  const [isRefreshingProfile, setIsRefreshingProfile] = useState(false);
+  const touchStartYRef = useRef<number | null>(null);
+  const isDraggingPullRef = useRef(false);
+
   // Real Supabase User Metrics (start strictly at 0)
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [followingCount, setFollowingCount] = useState<number>(0);
@@ -171,8 +181,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   });
 
   // Fetch creator reels from Supabase `posts` / `reels` table
-  const loadCreatorReels = useCallback(async () => {
-    setIsLoadingReels(true);
+  const loadCreatorReels = useCallback(async (silent = false) => {
+    if (!silent) {
+      setIsLoadingReels(true);
+    }
     const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
     const targetUserId = active?.id;
     const targetUsername = active?.username || profile.username || 'rameshrao034';
@@ -223,9 +235,134 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     } catch (err) {
       console.warn('Error loading creator posts:', err);
     } finally {
-      setIsLoadingReels(false);
+      if (!silent) {
+        setIsLoadingReels(false);
+      }
     }
   }, [currentUser, profile.username, profile.name]);
+
+  // Pull-to-Refresh handler: re-fetch latest profile data from Supabase
+  const handleRefreshProfile = useCallback(async () => {
+    setIsRefreshingProfile(true);
+    const startTime = Date.now();
+    try {
+      const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
+      const targetUsername = active?.username || profile.username || 'rameshrao034';
+      const targetUserId = active?.id;
+
+      // 1. Re-fetch latest profile details (bio, avatar, name, link) from Supabase
+      if (targetUsername) {
+        const cloudData = await fetchSupabaseProfile(targetUsername);
+        if (cloudData) {
+          setProfile((prev) => {
+            const updated = { ...prev, ...cloudData };
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        }
+      }
+
+      // 2. Re-fetch followers, following, and likes counts from Supabase
+      const metrics = await fetchUserMetricsFromSupabase(targetUserId, targetUsername);
+      if (metrics) {
+        setFollowersCount(metrics.followersCount);
+        setFollowingCount(metrics.followingCount);
+        setTotalLikesCount(metrics.totalLikesCount);
+      }
+
+      // 3. Re-fetch posts/reels grid from Supabase silently without content flicker
+      await loadCreatorReels(true);
+
+      // Ensure smooth animation duration window (~750ms)
+      const elapsed = Date.now() - startTime;
+      const minDuration = 750;
+      if (elapsed < minDuration) {
+        await new Promise((res) => setTimeout(res, minDuration - elapsed));
+      }
+    } catch (err) {
+      console.warn('Error refreshing profile:', err);
+    } finally {
+      setIsRefreshingProfile(false);
+    }
+  }, [currentUser, profile.username, loadCreatorReels]);
+
+  // Touch handlers for Pull-to-Refresh
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (containerRef.current && containerRef.current.scrollTop <= 2) {
+      touchStartYRef.current = e.touches[0].clientY;
+      isDraggingPullRef.current = true;
+    } else {
+      touchStartYRef.current = null;
+      isDraggingPullRef.current = false;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingPullRef.current || touchStartYRef.current === null || isRefreshingProfile) return;
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - touchStartYRef.current;
+
+    if (diff > 0 && containerRef.current && containerRef.current.scrollTop <= 2) {
+      const pull = Math.min(diff * 0.45, 60);
+      setPullY(pull);
+    } else {
+      setPullY(0);
+    }
+  };
+
+  const handleTouchEnd = async () => {
+    if (pullY > 38 && !isRefreshingProfile) {
+      setPullY(0);
+      await handleRefreshProfile();
+    } else {
+      setPullY(0);
+    }
+    touchStartYRef.current = null;
+    isDraggingPullRef.current = false;
+  };
+
+  // Mouse handlers for desktop testing
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (containerRef.current && containerRef.current.scrollTop <= 2) {
+      touchStartYRef.current = e.clientY;
+      isDraggingPullRef.current = true;
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingPullRef.current || touchStartYRef.current === null || isRefreshingProfile) return;
+    const diff = e.clientY - touchStartYRef.current;
+    if (diff > 0 && containerRef.current && containerRef.current.scrollTop <= 2) {
+      const pull = Math.min(diff * 0.4, 60);
+      setPullY(pull);
+    } else {
+      setPullY(0);
+    }
+  };
+
+  const handleMouseUp = async () => {
+    if (isDraggingPullRef.current) {
+      if (pullY > 38 && !isRefreshingProfile) {
+        setPullY(0);
+        await handleRefreshProfile();
+      } else {
+        setPullY(0);
+      }
+      touchStartYRef.current = null;
+      isDraggingPullRef.current = false;
+    }
+  };
+
+  // 3-Dots Action Menu & Edit Reel State on User's Reels Grid
+  const [selectedGridReel, setSelectedGridReel] = useState<Reel | null>(null);
+  const [isGridActionMenuOpen, setIsGridActionMenuOpen] = useState(false);
+  const [isEditModalForReelOpen, setIsEditModalForReelOpen] = useState(false);
+  const [showConfirmDeleteReel, setShowConfirmDeleteReel] = useState(false);
+  const [editReelCaption, setEditReelCaption] = useState('');
+  const [isSavingReelEdit, setIsSavingReelEdit] = useState(false);
+  const [isDeletingReelFromGrid, setIsDeletingReelFromGrid] = useState(false);
 
   // Reel Options Menu & Delete State
   const [optionsReel, setOptionsReel] = useState<Reel | null>(null);
@@ -241,6 +378,103 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setIsOptionsOpen(false);
     setOptionsReel(null);
   }, []);
+
+  // 3-Dots Action Menu Handlers for Grid Reels
+  const handleOpenGridReelMenu = useCallback((reel: Reel) => {
+    setSelectedGridReel(reel);
+    setShowConfirmDeleteReel(false);
+    setIsGridActionMenuOpen(true);
+  }, []);
+
+  const handleConfirmDeleteReel = async () => {
+    if (!selectedGridReel || isDeletingReelFromGrid) return;
+    setIsDeletingReelFromGrid(true);
+    const reelId = selectedGridReel.id;
+
+    try {
+      // 1. Instantly remove from local grid state
+      setCreatorReels((prev) => prev.filter((r) => r.id !== reelId));
+      setSavedReelIds((prev) => prev.filter((id) => id !== reelId));
+      if (playbackReel?.id === reelId) {
+        setPlaybackReel(null);
+      }
+
+      // 2. Notify parent
+      onDeleteReel?.(reelId);
+
+      // 3. Broadcast global reel-deleted event so all views update
+      window.dispatchEvent(
+        new CustomEvent('reel-deleted', { detail: { reelId } })
+      );
+
+      // 4. Show success toast
+      showToast('Reel deleted successfully');
+
+      // 5. Close menu
+      setIsGridActionMenuOpen(false);
+      setShowConfirmDeleteReel(false);
+      setSelectedGridReel(null);
+
+      // 6. Delete from Supabase in background
+      await deleteReelFromSupabase(reelId);
+    } catch (err) {
+      console.warn('Error deleting reel:', err);
+    } finally {
+      setIsDeletingReelFromGrid(false);
+    }
+  };
+
+  const handleSaveReelEdit = async () => {
+    if (!selectedGridReel || isSavingReelEdit) return;
+    setIsSavingReelEdit(true);
+    const reelId = selectedGridReel.id;
+    const cleanCaption = editReelCaption.trim();
+    const tags = cleanCaption.match(/#[a-zA-Z0-9_]+/g) || [];
+
+    try {
+      // 1. Optimistically update creatorReels in state
+      setCreatorReels((prev) =>
+        prev.map((r) =>
+          r.id === reelId
+            ? {
+                ...r,
+                caption: cleanCaption,
+                tags: tags.length > 0 ? tags : r.tags,
+              }
+            : r
+        )
+      );
+
+      // 2. Broadcast global reel-updated event
+      window.dispatchEvent(
+        new CustomEvent('reel-updated', {
+          detail: {
+            reelId,
+            caption: cleanCaption,
+            tags,
+          },
+        })
+      );
+
+      // 3. Show success toast
+      showToast('Reel updated successfully ✨');
+
+      // 4. Close modal
+      setIsEditModalForReelOpen(false);
+      setSelectedGridReel(null);
+
+      // 5. Save changes back to Supabase
+      await updateReelDetailsInSupabase(reelId, {
+        caption: cleanCaption,
+        tags,
+      });
+    } catch (err) {
+      console.warn('Error saving reel edits:', err);
+      showToast('Failed to update reel');
+    } finally {
+      setIsSavingReelEdit(false);
+    }
+  };
 
   const handleDeleteReelFromProfile = useCallback(async (reelId: string) => {
     // 1. Optimistically decrement REELS count and remove immediately from creatorReels & savedReels
@@ -548,6 +782,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   return (
     <div
+      ref={containerRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
       className={`absolute inset-0 z-30 flex flex-col pt-3 pb-24 px-4 overflow-y-auto no-scrollbar select-none transition-colors ${
         isDark ? 'bg-black text-white' : 'bg-white text-black'
       }`}
@@ -567,10 +809,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         )}
       </AnimatePresence>
 
-      {/* 1. Header: Username with verification badge, settings gear icon, and share profile action */}
-      <div
-        className={`flex items-center justify-between pb-3 border-b shrink-0 transition-colors ${
-          isDark ? 'border-[#262626]' : 'border-[#efefef]'
+      {/* 1. Sticky Top Header: Username with verification badge, settings gear icon, and share profile action */}
+      <header
+        className={`sticky top-0 z-20 flex items-center justify-between pb-3 -mx-4 px-4 pt-1 border-b shrink-0 backdrop-blur-md transition-colors ${
+          isDark ? 'bg-black/95 border-[#262626]' : 'bg-white/95 border-[#efefef]'
         }`}
       >
         <div className="flex items-center gap-1.5">
@@ -631,6 +873,29 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           >
             <X size={18} />
           </button>
+        </div>
+      </header>
+
+      {/* 2. True Instagram Top Pull-to-Refresh Spinner: Horizontally centered directly below the top username header bar */}
+      <div
+        className="w-full flex items-center justify-center overflow-hidden transition-[height,opacity] duration-300 ease-out pointer-events-none select-none"
+        style={{
+          height: isRefreshingProfile ? '50px' : pullY > 0 ? `${Math.min(pullY, 54)}px` : '0px',
+          opacity: isRefreshingProfile ? 1 : pullY > 8 ? Math.min((pullY - 8) / 24, 1) : 0,
+        }}
+      >
+        <div className="flex items-center justify-center py-2.5">
+          <div
+            className={`w-[28px] h-[28px] rounded-full border-[2.5px] ${
+              isDark
+                ? 'border-zinc-800 border-t-white border-r-white'
+                : 'border-zinc-200 border-t-zinc-900 border-r-zinc-900'
+            } ${isRefreshingProfile ? 'animate-spin' : ''}`}
+            style={{
+              transform: isRefreshingProfile ? undefined : `rotate(${pullY * 6}deg)`,
+              animationDuration: '0.75s',
+            }}
+          />
         </div>
       </div>
 
@@ -695,13 +960,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </a>
         )}
 
-        {/* Stats Row: Reels Count, Followers Count, Following Count, and Likes Count */}
+        {/* Stats Row: 3 clean columns (Reels, Followers, Following) */}
         <div
-          className={`flex items-center justify-around w-full max-w-sm mt-4 py-2 px-4 rounded-xl border transition-colors ${
+          className={`grid grid-cols-3 w-full max-w-sm mt-4 py-2.5 px-2 rounded-xl border transition-colors ${
             isDark ? 'bg-zinc-950 border-[#262626]' : 'bg-zinc-50 border-[#efefef]'
           }`}
         >
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center justify-center">
             <span className="font-bold text-sm">
               {creatorReels.length}
             </span>
@@ -709,8 +974,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               Reels
             </span>
           </div>
-          <div className={`h-6 w-[1px] ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-          <div className="flex flex-col items-center">
+          <div className={`flex flex-col items-center justify-center border-x ${isDark ? 'border-zinc-800' : 'border-zinc-200'}`}>
             <span className="font-bold text-sm">
               {followersCount.toLocaleString('en-IN')}
             </span>
@@ -718,22 +982,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               Followers
             </span>
           </div>
-          <div className={`h-6 w-[1px] ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center justify-center">
             <span className="font-bold text-sm">
               {followingCount.toLocaleString('en-IN')}
             </span>
             <span className="text-[11px] text-zinc-500 mt-0.5">
               Following
-            </span>
-          </div>
-          <div className={`h-6 w-[1px] ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-          <div className="flex flex-col items-center">
-            <span className="font-bold text-sm">
-              {dynamicLikesCount.toLocaleString('en-IN')}
-            </span>
-            <span className="text-[11px] text-zinc-500 mt-0.5">
-              Likes
             </span>
           </div>
         </div>
@@ -877,12 +1131,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* Tab 1: "My Reels" - 3-column grid or Empty State */}
       {activeProfileTab === 'reels' ? (
         <div className="mt-3 min-h-[220px]">
-          {isLoadingReels ? (
-            <div className="flex flex-col items-center justify-center py-16 text-zinc-500 gap-2">
-              <Loader2 size={24} className="animate-spin text-zinc-400" />
-              <span className="text-xs">Loading reels...</span>
-            </div>
-          ) : creatorReels.length > 0 ? (
+          {creatorReels.length > 0 ? (
             /* 3-Column Video Grid */
             <div className="grid grid-cols-3 gap-1">
               {creatorReels.map((reel) => {
@@ -917,12 +1166,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleOpenReelOptions(reel);
+                        e.preventDefault();
+                        handleOpenGridReelMenu(reel);
                       }}
-                      className="absolute top-1.5 left-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md text-white/90 hover:text-white hover:bg-black/90 transition-colors z-10"
+                      className="absolute top-1.5 left-1.5 p-1.5 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white active:scale-90 transition-all z-10 cursor-pointer shadow-md"
                       aria-label="Reel options"
                     >
-                      <MoreVertical size={11} />
+                      <MoreVertical size={13} strokeWidth={2.4} />
                     </button>
 
                     {/* Play Icon indicator on top-right */}
@@ -1351,6 +1601,330 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             reels={creatorReels.length > 0 ? creatorReels : reels}
             currentUser={currentUser}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Instagram-Style 3-Dots Action Sheet for Reel on Profile Grid (Edit, Delete, Cancel) */}
+      <AnimatePresence>
+        {isGridActionMenuOpen && selectedGridReel && (
+          <div className="fixed inset-0 z-[85] flex items-end justify-center">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                if (!isDeletingReelFromGrid) {
+                  setIsGridActionMenuOpen(false);
+                  setShowConfirmDeleteReel(false);
+                  setSelectedGridReel(null);
+                }
+              }}
+              className="absolute inset-0 bg-black/75 backdrop-blur-sm cursor-pointer"
+            />
+
+            {/* Bottom Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              className={`relative w-full max-w-sm sm:max-w-md mx-auto rounded-t-3xl border-t p-5 shadow-2xl z-10 overflow-hidden select-none transition-colors ${
+                isDark ? 'bg-[#0f0f12] border-white/10 text-white' : 'bg-white border-zinc-200 text-black'
+              }`}
+            >
+              {/* Drag Handle */}
+              <div className="flex justify-center -mt-2 pb-3">
+                <div className={`h-1 w-10 rounded-full ${isDark ? 'bg-zinc-700' : 'bg-zinc-300'}`} />
+              </div>
+
+              {!showConfirmDeleteReel ? (
+                <div className="flex flex-col gap-2">
+                  {/* Reel Mini Preview */}
+                  <div
+                    className={`flex items-center gap-3 pb-3 mb-1 border-b ${
+                      isDark ? 'border-zinc-800' : 'border-zinc-100'
+                    }`}
+                  >
+                    <div className="h-14 w-10 rounded-lg overflow-hidden shrink-0 bg-black border border-white/10">
+                      {selectedGridReel.poster ? (
+                        <img
+                          src={selectedGridReel.poster}
+                          alt={selectedGridReel.caption || 'Reel preview'}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : selectedGridReel.videoUrl ? (
+                        <video
+                          src={`${selectedGridReel.videoUrl}#t=0.1`}
+                          className="h-full w-full object-cover pointer-events-none"
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-xs">🎬</div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-bold text-xs truncate block">
+                        @{selectedGridReel.username || profile.username}
+                      </span>
+                      <p className="text-xs text-zinc-500 truncate mt-0.5">
+                        {selectedGridReel.caption || 'No caption'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsGridActionMenuOpen(false);
+                        setSelectedGridReel(null);
+                      }}
+                      className={`p-1.5 rounded-full transition-colors cursor-pointer ${
+                        isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-zinc-100 text-zinc-600'
+                      }`}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {/* Option 1: Edit Reel */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditReelCaption(selectedGridReel.caption || '');
+                      setIsGridActionMenuOpen(false);
+                      setIsEditModalForReelOpen(true);
+                    }}
+                    className={`flex items-center justify-between w-full p-3.5 rounded-2xl border transition-all active:scale-[0.98] cursor-pointer ${
+                      isDark
+                        ? 'bg-zinc-900/70 hover:bg-zinc-900 border-zinc-800 text-white'
+                        : 'bg-zinc-50 hover:bg-zinc-100 border-zinc-200 text-black'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-[#0095f6]/15 text-[#0095f6]">
+                        <Pencil size={18} />
+                      </div>
+                      <div className="flex flex-col items-start">
+                        <span className="text-sm font-bold flex items-center gap-1.5">
+                          Edit Reel
+                        </span>
+                        <span className="text-[11px] text-zinc-500">
+                          Update caption, title & hashtags
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Option 2: Delete Reel */}
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmDeleteReel(true)}
+                    className="flex items-center justify-between w-full p-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/30 text-rose-500 transition-all active:scale-[0.98] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-rose-500/15 text-rose-500">
+                        <Trash2 size={18} />
+                      </div>
+                      <div className="flex flex-col items-start">
+                        <span className="text-sm font-bold text-rose-500 flex items-center gap-1.5">
+                          Delete Reel
+                        </span>
+                        <span className="text-[11px] text-rose-500/70">
+                          Permanently remove from profile & feed
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Option 3: Cancel */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGridActionMenuOpen(false);
+                      setSelectedGridReel(null);
+                    }}
+                    className={`w-full py-3 mt-1 rounded-2xl text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                      isDark
+                        ? 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
+                        : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                /* Delete Confirmation View */
+                <div className="flex flex-col items-center text-center py-2">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/15 text-rose-500 mb-3 border border-rose-500/30">
+                    <AlertTriangle size={28} />
+                  </div>
+                  <h3 className="font-extrabold text-base mb-1">Delete this reel?</h3>
+                  <p className="text-xs text-zinc-400 max-w-xs mb-5 leading-relaxed">
+                    This reel will be permanently removed from your profile and the GediOn feed. This action cannot be undone.
+                  </p>
+
+                  <div className="flex flex-col gap-2.5 w-full">
+                    <button
+                      type="button"
+                      onClick={handleConfirmDeleteReel}
+                      disabled={isDeletingReelFromGrid}
+                      className="w-full py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-98 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-950/40 cursor-pointer"
+                    >
+                      {isDeletingReelFromGrid ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          <span>Deleting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 size={16} />
+                          <span>Delete Reel</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isDeletingReelFromGrid}
+                      onClick={() => setShowConfirmDeleteReel(false)}
+                      className={`w-full py-3 rounded-2xl text-xs font-bold transition-all active:scale-98 cursor-pointer ${
+                        isDark ? 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                      }`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Instagram-Style Edit Reel Modal (Caption & Hashtags) */}
+      <AnimatePresence>
+        {isEditModalForReelOpen && selectedGridReel && (
+          <div className="fixed inset-0 z-[88] flex items-end sm:items-center justify-center">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                if (!isSavingReelEdit) {
+                  setIsEditModalForReelOpen(false);
+                  setSelectedGridReel(null);
+                }
+              }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md cursor-pointer"
+            />
+
+            {/* Modal Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className={`relative w-full max-w-sm sm:max-w-md mx-auto rounded-t-3xl sm:rounded-3xl border-t sm:border p-5 shadow-2xl z-10 overflow-hidden select-none transition-colors ${
+                isDark ? 'bg-[#090910] border-white/10 text-white' : 'bg-white border-zinc-200 text-black'
+              }`}
+            >
+              {/* Drag Handle */}
+              <div className="flex justify-center -mt-2 pb-2 sm:hidden">
+                <div className={`h-1 w-10 rounded-full ${isDark ? 'bg-zinc-700' : 'bg-zinc-300'}`} />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalForReelOpen(false);
+                    setSelectedGridReel(null);
+                  }}
+                  disabled={isSavingReelEdit}
+                  className="text-xs font-semibold text-zinc-400 hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <h3 className="font-extrabold text-sm">Edit Reel Info</h3>
+                <button
+                  type="button"
+                  onClick={handleSaveReelEdit}
+                  disabled={isSavingReelEdit}
+                  className="px-3.5 py-1.5 rounded-full bg-[#0095f6] hover:bg-[#1877f2] text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingReelEdit ? (
+                    <Loader2 size={13} className="animate-spin text-white" />
+                  ) : (
+                    <Check size={13} strokeWidth={3} />
+                  )}
+                  <span>Done</span>
+                </button>
+              </div>
+
+              {/* Form Body */}
+              <div className="flex flex-col gap-3 max-h-[70vh] overflow-y-auto no-scrollbar">
+                {/* Media Preview + Caption Input Row */}
+                <div className="flex gap-3">
+                  <div className="w-20 aspect-[9/14] rounded-xl overflow-hidden bg-black shrink-0 border border-white/10">
+                    {selectedGridReel.poster ? (
+                      <img
+                        src={selectedGridReel.poster}
+                        alt="Reel"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : selectedGridReel.videoUrl ? (
+                      <video
+                        src={`${selectedGridReel.videoUrl}#t=0.1`}
+                        className="h-full w-full object-cover pointer-events-none"
+                        muted
+                        playsInline
+                      />
+                    ) : null}
+                  </div>
+
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    <label className="text-[11px] font-semibold text-zinc-400">Caption & Hashtags</label>
+                    <textarea
+                      value={editReelCaption}
+                      onChange={(e) => setEditReelCaption(e.target.value)}
+                      placeholder="Write a caption or add #hashtags..."
+                      rows={4}
+                      className="w-full resize-none rounded-xl bg-white/[0.06] border border-white/10 p-2.5 text-xs placeholder-zinc-500 focus:outline-none focus:border-[#0095f6] transition-colors leading-relaxed"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Hashtag helper buttons */}
+                <div>
+                  <span className="text-[11px] font-semibold text-zinc-400 block mb-1.5">Quick Hashtags:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['#reels', '#trending', '#viral', '#gedion', '#explore', '#comedy', '#music'].map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          if (!editReelCaption.includes(tag)) {
+                            setEditReelCaption((prev) => (prev ? `${prev} ${tag}` : tag));
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all active:scale-95 cursor-pointer ${
+                          editReelCaption.includes(tag)
+                            ? 'bg-[#0095f6]/20 border-[#0095f6]/40 text-[#0095f6]'
+                            : isDark
+                            ? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                            : 'bg-zinc-100 border-zinc-200 text-zinc-600 hover:text-black'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
