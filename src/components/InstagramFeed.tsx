@@ -12,6 +12,7 @@ export interface InstagramFeedProps {
   reels: Reel[];
   stories: StoryItem[];
   currentUser?: AuthUser | null;
+  isActiveFeed?: boolean;
   isMuted: boolean;
   onToggleMute: () => void;
   onToggleLike: (reelId: string) => void;
@@ -19,6 +20,7 @@ export interface InstagramFeedProps {
   onOpenComments: (reelId: string) => void;
   onOpenShare: (reelId: string) => void;
   onOpenOptions: (reel: Reel) => void;
+  onOpenReels?: (reelId: string, isSoundOn?: boolean) => void;
   onOpenYourStory: () => void;
   onSelectStory: (index: number) => void;
   onOpenCreate?: () => void;
@@ -33,6 +35,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   reels,
   stories,
   currentUser,
+  isActiveFeed = true,
   isMuted: parentIsMuted,
   onToggleMute: parentToggleMute,
   onToggleLike,
@@ -40,6 +43,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   onOpenComments,
   onOpenShare,
   onOpenOptions,
+  onOpenReels,
   onOpenYourStory,
   onSelectStory,
   onOpenCreate,
@@ -295,7 +299,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
                 <InstagramPostCard
                   reel={reel}
                   currentUser={currentUser}
-                  isActive={isThisPostActive}
+                  isActive={isActiveFeed && isThisPostActive}
                   isSoundOn={isThisPostSoundOn}
                   onToggleSound={() => handleTogglePostSound(reel.id)}
                   isMuted={!isThisPostSoundOn}
@@ -305,6 +309,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
                   onOpenComments={onOpenComments}
                   onOpenShare={onOpenShare}
                   onOpenOptions={onOpenOptions}
+                  onOpenReels={(reelId) => onOpenReels?.(reelId, isThisPostSoundOn)}
                   onShowToast={onShowToast}
                 />
               </div>

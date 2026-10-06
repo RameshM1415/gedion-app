@@ -10,6 +10,7 @@ import {
   VolumeX,
   Music,
   MapPin,
+  Film,
 } from 'lucide-react';
 import { Reel } from '../types';
 import { AuthUser } from '../utils/authStorage';
@@ -28,6 +29,7 @@ export interface InstagramPostCardProps {
   onOpenComments: (reelId: string) => void;
   onOpenShare: (reelId: string) => void;
   onOpenOptions: (reel: Reel) => void;
+  onOpenReels?: (reelId: string) => void;
   onShowToast?: (message: string) => void;
 }
 
@@ -44,6 +46,7 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
   onOpenComments,
   onOpenShare,
   onOpenOptions,
+  onOpenReels,
   onShowToast,
 }) => {
   const { isDark } = useTheme();
@@ -96,13 +99,31 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
     onToggleLike(reel.id);
   };
 
-  // Double-tap like on photo/video media
-  const handleDoubleTap = (e: React.MouseEvent) => {
+  // Single-tap timer to distinguish between single tap (open full reels) and double-tap (like heart)
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Media Click handler: single tap opens full screen Reels viewer, double tap likes
+  const handleMediaClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 320;
+    const DOUBLE_TAP_THRESHOLD = 280;
 
-    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+    if (now - lastTapRef.current < DOUBLE_TAP_THRESHOLD) {
+      // DOUBLE TAP -> Cancel single tap timer & trigger Heart like!
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
+      lastTapRef.current = 0;
+
       if (!isLiked) {
         setIsLiked(true);
         const nextCount = likesCount + 1;
@@ -111,9 +132,15 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
       }
       setShowHeartBurst(true);
       setTimeout(() => setShowHeartBurst(false), 700);
-      lastTapRef.current = 0;
     } else {
+      // Single tap: set timer
       lastTapRef.current = now;
+      if (isVideo && onOpenReels) {
+        singleTapTimerRef.current = setTimeout(() => {
+          onOpenReels(reel.id);
+          singleTapTimerRef.current = null;
+        }, DOUBLE_TAP_THRESHOLD);
+      }
     }
   };
 
@@ -206,8 +233,8 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
 
       {/* 2. MEDIA SECTION: Full-width responsive photo/video with pure dark loading state */}
       <div
-        onClick={handleDoubleTap}
-        className="relative w-full aspect-[4/5] bg-[#000000] flex items-center justify-center overflow-hidden cursor-pointer select-none"
+        onClick={handleMediaClick}
+        className="relative w-full aspect-[4/5] bg-[#000000] flex items-center justify-center overflow-hidden cursor-pointer select-none group"
       >
         {/* Pure solid dark #000000 / #0a0a0a loading skeleton - Zero blue flash */}
         {!mediaLoaded && (
@@ -217,6 +244,22 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
               <div className="w-3.5 h-3.5 rounded-full border-2 border-zinc-600 border-t-transparent animate-spin" />
             </div>
           </div>
+        )}
+
+        {/* Top-Right Reels Pill Badge (Instagram style indicator on videos) */}
+        {isVideo && onOpenReels && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenReels(reel.id);
+            }}
+            aria-label="Open full-screen reel"
+            className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold shadow-lg hover:bg-black/85 active:scale-95 transition-all cursor-pointer"
+          >
+            <Film size={12} className="text-white" />
+            <span>Reels</span>
+          </button>
         )}
 
         {isVideo && reel.videoUrl ? (

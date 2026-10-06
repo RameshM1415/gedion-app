@@ -58,7 +58,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     const DOUBLE_TAP_THRESHOLD = 320; // 320ms window for double tap
 
     if (now - lastHomeTapRef.current < DOUBLE_TAP_THRESHOLD) {
-      // 1. DOUBLE-TAP DETECTED!
       if (singleTapTimerRef.current) {
         clearTimeout(singleTapTimerRef.current);
         singleTapTimerRef.current = null;
@@ -79,10 +78,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       if (activeTab !== 'home') {
         onSelectTab('home');
       }
-      // Trigger full feed refresh from Supabase & reset feed scroll to top
       onHomeRefresh?.();
     } else {
-      // 2. Single tap candidate
       lastHomeTapRef.current = now;
       if (activeTab !== 'home') {
         onSelectTab('home');
@@ -96,13 +93,25 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   if (!isVisible) return null;
 
+  const isReelsTab = activeTab === 'reels';
   const isSearchActive = activeTab === 'explore' || (activeTab as string) === 'search';
+
+  // Dynamic bar background: solid dark/black on Reels tab, standard theme on other tabs
+  const barThemeClasses = isReelsTab
+    ? 'bg-black/95 backdrop-blur-md border-white/10 text-white shadow-2xl'
+    : isDark
+    ? 'bg-black border-[#262626] text-white'
+    : 'bg-white border-[#efefef] text-black';
+
+  const defaultIconColor = isReelsTab
+    ? 'text-white/70 hover:text-white'
+    : isDark
+    ? 'text-zinc-400 hover:text-white'
+    : 'text-zinc-600 hover:text-black';
 
   return (
     <nav
-      className={`fixed bottom-0 inset-x-0 z-40 max-w-[440px] mx-auto h-[50px] border-t px-5 flex items-center justify-between select-none transition-colors ${
-        isDark ? 'bg-black border-[#262626] text-white' : 'bg-white border-[#efefef] text-black'
-      }`}
+      className={`fixed bottom-0 inset-x-0 z-40 max-w-[440px] mx-auto h-[50px] border-t px-5 flex items-center justify-between select-none transition-colors duration-300 ${barThemeClasses}`}
     >
       {/* 1. Home (🏠) with Double-Tap Refresh & Spin Animation */}
       <button
@@ -127,7 +136,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             <Home
               size={24}
               strokeWidth={activeTab === 'home' ? 2.5 : 1.8}
-              className={activeTab === 'home' ? 'fill-current' : ''}
+              className={
+                activeTab === 'home'
+                  ? 'fill-current'
+                  : defaultIconColor
+              }
             />
           )}
         </div>
@@ -145,12 +158,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           strokeWidth={isSearchActive ? 2.8 : 1.8}
           className={`transition-all ${
             isSearchActive
-              ? isDark
+              ? isReelsTab || isDark
                 ? 'text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.6)]'
                 : 'text-black drop-shadow-[0_0_6px_rgba(0,0,0,0.3)]'
-              : isDark
-              ? 'text-zinc-400 hover:text-white'
-              : 'text-zinc-600 hover:text-black'
+              : defaultIconColor
           }`}
         />
       </button>
@@ -165,7 +176,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <PlusSquare
           size={24}
           strokeWidth={activeTab === 'create' ? 2.5 : 1.8}
-          className={activeTab === 'create' ? 'text-[#0095f6]' : ''}
+          className={
+            activeTab === 'create'
+              ? 'text-[#0095f6]'
+              : defaultIconColor
+          }
         />
       </button>
 
@@ -178,8 +193,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       >
         <Film
           size={24}
-          strokeWidth={activeTab === 'reels' ? 2.5 : 1.8}
-          className={activeTab === 'reels' ? 'fill-current' : ''}
+          strokeWidth={isReelsTab ? 2.5 : 1.8}
+          className={
+            isReelsTab
+              ? 'fill-white text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.7)]'
+              : defaultIconColor
+          }
         />
       </button>
 
@@ -193,9 +212,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <div
           className={`w-6 h-6 rounded-full overflow-hidden transition-all ${
             activeTab === 'profile'
-              ? isDark
+              ? isReelsTab || isDark
                 ? 'ring-2 ring-white ring-offset-2 ring-offset-black'
                 : 'ring-2 ring-black ring-offset-2 ring-offset-white'
+              : isReelsTab
+              ? 'opacity-80'
               : 'opacity-90'
           }`}
         >
@@ -208,7 +229,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           ) : (
             <div
               className={`w-full h-full flex items-center justify-center ${
-                isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-700'
+                isReelsTab || isDark
+                  ? 'bg-zinc-800 text-white'
+                  : 'bg-zinc-200 text-zinc-700'
               }`}
             >
               <User size={14} />

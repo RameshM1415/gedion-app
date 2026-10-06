@@ -24,6 +24,7 @@ import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { VideoUploadModal } from './components/VideoUploadModal';
 import { supabase, fetchSupabaseReels, deleteReelFromSupabase, updateReelLikesInSupabase } from './utils/supabaseClient';
 import { InstagramFeed } from './components/InstagramFeed';
+import { ReelsHeader } from './components/ReelsHeader';
 import { useTheme } from './context/ThemeContext';
 import {
   AuthUser,
@@ -74,6 +75,8 @@ export const App: React.FC = () => {
   const [reels, setReels] = useState<Reel[]>(getInitialReels);
   const [feedTab, setFeedTab] = useState<FeedTab>('forYou');
   const [navTab, setNavTab] = useState<NavTab>('home');
+  const [reelsInitialReelId, setReelsInitialReelId] = useState<string | null>(null);
+  const [reelsSubTab, setReelsSubTab] = useState<'forYou' | 'friends'>('forYou');
   const [isMuted, setIsMuted] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [createMode, setCreateMode] = useState<'POST' | 'STORY' | 'PHOTO' | 'REEL' | 'LIVE'>('REEL');
@@ -280,6 +283,20 @@ export const App: React.FC = () => {
     setReels((prev) =>
       prev.map((r) => (r.id === reelId ? { ...r, isBookmarked: !r.isBookmarked } : r))
     );
+  }, []);
+
+  // Seamless navigation from Home Feed video posts to full-screen Reels viewer
+  const handleOpenReelsFromHome = useCallback((reelId: string, isSoundOn?: boolean) => {
+    if (isSoundOn !== undefined) {
+      setIsMuted(!isSoundOn);
+    }
+    setReelsInitialReelId(reelId);
+    setNavTab('reels');
+  }, []);
+
+  const handleBackToHomeFeed = useCallback(() => {
+    setNavTab('home');
+    setReelsInitialReelId(null);
   }, []);
 
   const handleOpenOptions = useCallback((reel: Reel) => {
@@ -535,41 +552,41 @@ export const App: React.FC = () => {
         {/* Main Tab Views */}
         <div className="relative h-full w-full overflow-hidden">
           {/* 1. HOME TAB (🏠): Instagram-Style Post Feed (Default Landing Screen) */}
-          {navTab === 'home' && (
-            <div className="relative h-full w-full overflow-hidden">
-              <InstagramFeed
-                reels={displayedReels}
-                stories={stories}
-                currentUser={currentUser}
-                isMuted={isMuted}
-                onToggleMute={handleToggleMute}
-                onToggleLike={handleToggleLike}
-                onToggleBookmark={handleToggleBookmark}
-                onOpenComments={handleOpenComments}
-                onOpenShare={handleOpenShare}
-                onOpenOptions={handleOpenOptions}
-                onOpenYourStory={handleOpenAddStory}
-                onSelectStory={handleSelectStory}
-                onOpenCreate={() => {
-                  if (!currentUser) {
-                    setAuthPromptMessage('Sign in to post photos and videos to GediOn!');
-                    setIsAuthModalOpen(true);
-                    return;
-                  }
-                  setCreateMode('POST');
-                  setNavTab('create');
-                }}
-                onOpenActivity={() => setNavTab('activity')}
-                onOpenMessages={() => setNavTab('messages')}
-                onShowToast={(msg) => {
-                  setFeedToast(msg);
-                  setTimeout(() => setFeedToast(null), 2500);
-                }}
-                hasUserStory={hasUserStory}
-                scrollToTopTrigger={scrollToTopTrigger}
-              />
-            </div>
-          )}
+          <div className={navTab === 'home' ? 'relative h-full w-full overflow-hidden' : 'hidden'}>
+            <InstagramFeed
+              reels={displayedReels}
+              stories={stories}
+              currentUser={currentUser}
+              isActiveFeed={navTab === 'home'}
+              isMuted={isMuted}
+              onToggleMute={handleToggleMute}
+              onToggleLike={handleToggleLike}
+              onToggleBookmark={handleToggleBookmark}
+              onOpenComments={handleOpenComments}
+              onOpenShare={handleOpenShare}
+              onOpenOptions={handleOpenOptions}
+              onOpenReels={handleOpenReelsFromHome}
+              onOpenYourStory={handleOpenAddStory}
+              onSelectStory={handleSelectStory}
+              onOpenCreate={() => {
+                if (!currentUser) {
+                  setAuthPromptMessage('Sign in to post photos and videos to GediOn!');
+                  setIsAuthModalOpen(true);
+                  return;
+                }
+                setCreateMode('POST');
+                setNavTab('create');
+              }}
+              onOpenActivity={() => setNavTab('activity')}
+              onOpenMessages={() => setNavTab('messages')}
+              onShowToast={(msg) => {
+                setFeedToast(msg);
+                setTimeout(() => setFeedToast(null), 2500);
+              }}
+              hasUserStory={hasUserStory}
+              scrollToTopTrigger={scrollToTopTrigger}
+            />
+          </div>
 
           {/* 2. REELS TAB (▶️): Full-bleed, edge-to-edge vertical Reels player */}
           {navTab === 'reels' && (
@@ -577,6 +594,8 @@ export const App: React.FC = () => {
               <ReelsFeed
                 reels={displayedReels}
                 isMuted={isMuted}
+                onToggleMute={handleToggleMute}
+                initialReelId={reelsInitialReelId}
                 onUpdateReel={handleUpdateReel}
                 onOpenComments={handleOpenComments}
                 onOpenShare={handleOpenShare}
@@ -603,36 +622,22 @@ export const App: React.FC = () => {
                 }}
               />
 
-              {/* Floating Header & Stories Overlay (Edge-to-edge full-bleed over Reels) */}
-              <div
-                className={`absolute top-0 inset-x-0 z-30 pointer-events-none flex flex-col bg-gradient-to-b from-black/85 via-black/40 to-transparent transition-all duration-300 ${
-                  isStoriesVisible ? 'pt-1.5 pb-2' : 'pt-1.5 pb-0'
-                }`}
-              >
-                {/* 1. Clean GediOn Top Bar: Logo on the left, balanced Following / For You tabs, clean right side */}
-                <TopHeader
-                  activeTab={feedTab}
-                  onTabChange={setFeedTab}
-                  onOpenActivity={() => setNavTab('activity')}
-                  hasUnreadActivity={false}
+              {/* Floating Instagram Reels Top Header: Back Arrow (←), "Reels | Friends" tabs, and Camera Action */}
+              <div className="absolute top-0 inset-x-0 z-30 pointer-events-none flex flex-col bg-gradient-to-b from-black/85 via-black/40 to-transparent pt-1.5 pb-2 transition-all duration-300">
+                <ReelsHeader
+                  activeSubTab={reelsSubTab}
+                  onSubTabChange={setReelsSubTab}
+                  onBackToHome={handleBackToHomeFeed}
+                  onOpenCreateReel={() => {
+                    if (!currentUser) {
+                      setAuthPromptMessage('Sign in to broadcast your reels to GediOn!');
+                      setIsAuthModalOpen(true);
+                      return;
+                    }
+                    setCreateMode('REEL');
+                    setNavTab('create');
+                  }}
                 />
-
-                {/* 2. Floating Stories Tray (Circular avatars floating over video without solid black bars) */}
-                <div
-                  className={`transition-all duration-300 overflow-hidden ${
-                    isStoriesVisible
-                      ? 'opacity-100 max-h-[140px] pointer-events-auto'
-                      : 'opacity-0 max-h-0 pointer-events-none -translate-y-2'
-                  }`}
-                >
-                  <StoriesTray
-                    stories={stories}
-                    onOpenYourStory={handleOpenAddStory}
-                    onSelectStory={handleSelectStory}
-                    userAvatar={currentUser?.avatar}
-                    hasUserStory={hasUserStory}
-                  />
-                </div>
               </div>
             </div>
           )}

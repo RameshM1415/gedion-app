@@ -13,6 +13,7 @@ interface ReelItemProps {
   reel: Reel;
   isActive: boolean;
   isMuted: boolean;
+  onToggleMute?: () => void;
   onUpdateReel: (updated: Reel) => void;
   onOpenComments: () => void;
   onOpenShare: () => void;
@@ -27,6 +28,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
   reel,
   isActive,
   isMuted,
+  onToggleMute,
   onUpdateReel,
   onOpenComments,
   onOpenShare,
@@ -490,7 +492,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
       {/* Floating Particle Hearts */}
       <FloatingHearts hearts={hearts} onHeartComplete={handleHeartComplete} />
 
-      {/* Right Action Rail (Like, Comment, Save, Share, Follow) */}
+      {/* Right Action Rail (Like, Comment, Save, Share, Sound, Options) */}
       <RightActionBar
         reel={{
           ...reel,
@@ -498,6 +500,8 @@ export const ReelItem: React.FC<ReelItemProps> = ({
           likesCount: optimisticLikesCount,
         }}
         isPlaying={isPlaying}
+        isMuted={isMuted}
+        onToggleMute={onToggleMute}
         onToggleLike={handleToggleLike}
         onToggleBookmark={handleToggleBookmark}
         onToggleFollow={handleToggleFollow}
@@ -514,8 +518,12 @@ export const ReelItem: React.FC<ReelItemProps> = ({
         }}
       />
 
-      {/* Bottom Creator & Audio Info Bar */}
-      <BottomInfoBar reel={reel} />
+      {/* Bottom Creator & Audio Info Bar with Follow button and comment input */}
+      <BottomInfoBar
+        reel={reel}
+        onOpenComments={onOpenComments}
+        onToggleFollow={handleToggleFollow}
+      />
 
       {/* Fallback Likes and Plays Modal */}
       {!onOpenLikes && (

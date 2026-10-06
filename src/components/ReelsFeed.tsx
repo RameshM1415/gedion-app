@@ -8,6 +8,8 @@ import { AuthUser } from '../utils/authStorage';
 interface ReelsFeedProps {
   reels: Reel[];
   isMuted: boolean;
+  onToggleMute?: () => void;
+  initialReelId?: string | null;
   onUpdateReel: (updated: Reel) => void;
   onOpenComments: (reelId: string) => void;
   onOpenShare: (reelId: string) => void;
@@ -26,6 +28,8 @@ interface ReelsFeedProps {
 export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   reels,
   isMuted,
+  onToggleMute,
+  initialReelId,
   onUpdateReel,
   onOpenComments,
   onOpenShare,
@@ -47,6 +51,29 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   const [feedReels, setFeedReels] = useState<Reel[]>(reels);
   const [isFetchingCloud, setIsFetchingCloud] = useState(true);
   const [fetchGlitch, setFetchGlitch] = useState(false);
+
+  // Jump to initialReelId on mount or when requested from home feed
+  useEffect(() => {
+    if (initialReelId && feedReels.length > 0) {
+      const targetIndex = feedReels.findIndex((r) => r.id === initialReelId);
+      if (targetIndex >= 0) {
+        setActiveIndex(targetIndex);
+        const performScroll = () => {
+          if (containerRef.current) {
+            const h = containerRef.current.clientHeight || window.innerHeight;
+            containerRef.current.scrollTop = targetIndex * h;
+          }
+        };
+        performScroll();
+        const raf = requestAnimationFrame(performScroll);
+        const timer = setTimeout(performScroll, 60);
+        return () => {
+          cancelAnimationFrame(raf);
+          clearTimeout(timer);
+        };
+      }
+    }
+  }, [initialReelId, feedReels]);
 
   // Listen for reel-deleted event to remove immediately from feed without page reload
   useEffect(() => {
@@ -355,6 +382,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
                 reel={reel}
                 isActive={index === activeIndex}
                 isMuted={isMuted}
+                onToggleMute={onToggleMute}
                 onUpdateReel={handleLocalUpdateReel}
                 onOpenComments={() => onOpenComments(reel.id)}
                 onOpenShare={() => onOpenShare(reel.id)}
