@@ -1,19 +1,26 @@
 import React, { useState } from 'react';
-import { BadgeCheck, Music2, Sparkles, MessageCircle, Heart } from 'lucide-react';
+import { BadgeCheck, Music2, Sparkles } from 'lucide-react';
 import { Reel } from '../types';
 
 interface BottomInfoBarProps {
   reel: Reel;
   onOpenComments?: () => void;
   onToggleFollow?: (e: React.MouseEvent) => void;
+  onOpenProfile?: (username: string) => void;
 }
 
 export const BottomInfoBar: React.FC<BottomInfoBarProps> = ({
   reel,
   onOpenComments,
   onToggleFollow,
+  onOpenProfile,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onOpenProfile?.(reel.username);
+  };
 
   return (
     <div className="absolute left-0 bottom-14 z-20 w-[calc(100%-72px)] p-3.5 flex flex-col gap-2 pointer-events-auto select-none">
@@ -27,10 +34,15 @@ export const BottomInfoBar: React.FC<BottomInfoBarProps> = ({
         </div>
       )}
 
-      {/* 1. Creator Row: Avatar, Username, Verified Badge, and Follow Pill Button */}
+      {/* 1. Creator Row: Clickable Avatar, Clickable Username, Verified Badge, and Follow Pill Button */}
       <div className="flex items-center gap-2">
-        {/* Creator Avatar */}
-        <div className="relative p-[1.5px] rounded-full bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888] shrink-0">
+        {/* Creator Avatar - Clickable */}
+        <button
+          type="button"
+          onClick={handleProfileClick}
+          aria-label={`View ${reel.displayName || reel.username}'s profile`}
+          className="relative p-[1.5px] rounded-full bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888] shrink-0 cursor-pointer active:scale-90 hover:opacity-90 transition-transform outline-none"
+        >
           <img
             src={
               reel.avatar ||
@@ -39,12 +51,17 @@ export const BottomInfoBar: React.FC<BottomInfoBarProps> = ({
             alt={reel.displayName || reel.username}
             className="w-8 h-8 rounded-full object-cover border-[1.5px] border-black"
           />
-        </div>
+        </button>
 
-        {/* Username */}
-        <span className="font-bold text-sm text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-tight hover:underline cursor-pointer truncate max-w-[140px]">
+        {/* Username - Clickable */}
+        <button
+          type="button"
+          onClick={handleProfileClick}
+          aria-label={`View ${reel.username}'s profile`}
+          className="font-bold text-sm text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-tight hover:underline cursor-pointer truncate max-w-[140px] text-left active:opacity-75 transition-opacity outline-none"
+        >
           {reel.username}
-        </span>
+        </button>
 
         {reel.isVerified && (
           <BadgeCheck size={16} className="fill-[#0095f6] text-black drop-shadow-sm shrink-0" />
@@ -107,20 +124,6 @@ export const BottomInfoBar: React.FC<BottomInfoBarProps> = ({
           </div>
         </div>
       </div>
-
-      {/* 4. Sleek Bottom Pill Input: "Add comment..." */}
-      {onOpenComments && (
-        <div
-          onClick={onOpenComments}
-          className="flex items-center justify-between w-full mt-0.5 px-3 py-1.5 rounded-full bg-black/45 border border-white/20 backdrop-blur-md cursor-pointer hover:bg-black/60 transition-colors text-white/70 text-xs shadow-md active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-2">
-            <MessageCircle size={13} className="text-white/60" />
-            <span className="font-normal text-[11.5px]">Add comment...</span>
-          </div>
-          <span className="text-xs">❤️</span>
-        </div>
-      )}
     </div>
   );
 };

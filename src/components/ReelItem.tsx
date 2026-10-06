@@ -20,6 +20,7 @@ interface ReelItemProps {
   onOpenReport?: () => void;
   onOpenOptions?: () => void;
   onOpenLikes?: () => void;
+  onOpenProfile?: (username: string) => void;
   currentUser?: AuthUser | null;
   onRequireAuth?: (promptMessage: string) => void;
 }
@@ -35,6 +36,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
   onOpenReport,
   onOpenOptions,
   onOpenLikes,
+  onOpenProfile,
   currentUser,
   onRequireAuth,
 }) => {
@@ -341,6 +343,18 @@ export const ReelItem: React.FC<ReelItemProps> = ({
     }, 2400);
   };
 
+  // Pause playback smoothly when navigating to the creator's profile
+  const handleOpenProfile = (username: string) => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    setIsPlaying(false);
+    onOpenProfile?.(username);
+  };
+
   const mediaSource = isImage ? (reel.poster || effectiveVideoUrl) : effectiveVideoUrl;
 
   // Pinch-to-zoom support for mobile touch screens
@@ -518,11 +532,12 @@ export const ReelItem: React.FC<ReelItemProps> = ({
         }}
       />
 
-      {/* Bottom Creator & Audio Info Bar with Follow button and comment input */}
+      {/* Bottom Creator & Audio Info Bar with Follow button and clickable creator */}
       <BottomInfoBar
         reel={reel}
         onOpenComments={onOpenComments}
         onToggleFollow={handleToggleFollow}
+        onOpenProfile={handleOpenProfile}
       />
 
       {/* Fallback Likes and Plays Modal */}

@@ -14,6 +14,8 @@ export interface InstagramFeedProps {
   currentUser?: AuthUser | null;
   isActiveFeed?: boolean;
   isMuted: boolean;
+  isRefreshing?: boolean;
+  onRefreshFeed?: () => Promise<void> | void;
   onToggleMute: () => void;
   onToggleLike: (reelId: string) => void;
   onToggleBookmark: (reelId: string) => void;
@@ -21,6 +23,7 @@ export interface InstagramFeedProps {
   onOpenShare: (reelId: string) => void;
   onOpenOptions: (reel: Reel) => void;
   onOpenReels?: (reelId: string, isSoundOn?: boolean) => void;
+  onOpenProfile?: (username: string) => void;
   onOpenYourStory: () => void;
   onSelectStory: (index: number) => void;
   onOpenCreate?: () => void;
@@ -37,6 +40,8 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   currentUser,
   isActiveFeed = true,
   isMuted: parentIsMuted,
+  isRefreshing: parentIsRefreshing = false,
+  onRefreshFeed,
   onToggleMute: parentToggleMute,
   onToggleLike,
   onToggleBookmark,
@@ -44,6 +49,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   onOpenShare,
   onOpenOptions,
   onOpenReels,
+  onOpenProfile,
   onOpenYourStory,
   onSelectStory,
   onOpenCreate,
@@ -62,11 +68,21 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   const [unmutedPostId, setUnmutedPostId] = useState<string | null>(null);
   const postRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  // 2. Pull-To-Refresh State with animated circular ring spinner
+  // 2. Refresh State & Animated Circular Outline Ring Spinner (Between Header & Stories)
   const [pullY, setPullY] = useState(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [localRefreshing, setLocalRefreshing] = useState(false);
+  const effectiveRefreshing = Boolean(parentIsRefreshing || localRefreshing);
   const touchStartYRef = useRef<number | null>(null);
   const isDraggingPullRef = useRef(false);
+
+  // When reels change (content updated/shuffled), reset active post to the new top video and pause previous
+  useEffect(() => {
+    if (reels.length > 0) {
+      const topId = reels[0].id;
+      setActivePostId(topId);
+      setUnmutedPostId(null);
+    }
+  }, [reels]);
 
   // Viewport scroll spy: dynamically identify which post is currently active
   const checkActivePost = useCallback(() => {
@@ -138,7 +154,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
     }
   }, [scrollToTopTrigger, reels]);
 
-  // Touch handlers for Pull-to-Refresh
+  // Touch & Mouse handlers for consistent Pull-to-Refresh
   const handleTouchStart = (e: React.TouchEvent) => {
     if (containerRef.current && containerRef.current.scrollTop <= 2) {
       touchStartYRef.current = e.touches[0].clientY;
@@ -150,13 +166,13 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDraggingPullRef.current || touchStartYRef.current === null || isRefreshing) return;
+    if (!isDraggingPullRef.current || touchStartYRef.current === null || effectiveRefreshing) return;
     const currentY = e.touches[0].clientY;
     const diff = currentY - touchStartYRef.current;
 
     if (diff > 0 && containerRef.current && containerRef.current.scrollTop <= 2) {
       // Elastic rubber-band resistance
-      const pull = Math.min(diff * 0.45, 75);
+      const pull = Math.min(diff * 0.45, 60);
       setPullY(pull);
     } else {
       setPullY(0);
@@ -164,28 +180,50 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   };
 
   const handleTouchEnd = async () => {
-    if (pullY > 45 && !isRefreshing) {
-      setIsRefreshing(true);
-      setPullY(50); // Anchor spinner at bottom of sub-header
-
-      try {
-        const fresh = await fetchSupabaseReels();
-        if (fresh && fresh.length > 0) {
-          onShowToast?.('Feed refreshed');
-        }
-      } catch (err) {
-        console.warn('Pull-to-refresh note:', err);
-      } finally {
-        setTimeout(() => {
-          setIsRefreshing(false);
-          setPullY(0);
-        }, 550);
+    if (pullY > 38 && !effectiveRefreshing) {
+      setPullY(0);
+      if (onRefreshFeed) {
+        await onRefreshFeed();
       }
     } else {
       setPullY(0);
     }
     touchStartYRef.current = null;
     isDraggingPullRef.current = false;
+  };
+
+  // Mouse pull-to-refresh for desktop/browser support
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (containerRef.current && containerRef.current.scrollTop <= 2) {
+      touchStartYRef.current = e.clientY;
+      isDraggingPullRef.current = true;
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingPullRef.current || touchStartYRef.current === null || effectiveRefreshing) return;
+    const diff = e.clientY - touchStartYRef.current;
+    if (diff > 0 && containerRef.current && containerRef.current.scrollTop <= 2) {
+      const pull = Math.min(diff * 0.4, 60);
+      setPullY(pull);
+    } else {
+      setPullY(0);
+    }
+  };
+
+  const handleMouseUp = async () => {
+    if (isDraggingPullRef.current) {
+      if (pullY > 38 && !effectiveRefreshing) {
+        setPullY(0);
+        if (onRefreshFeed) {
+          await onRefreshFeed();
+        }
+      } else {
+        setPullY(0);
+      }
+      touchStartYRef.current = null;
+      isDraggingPullRef.current = false;
+    }
   };
 
   // Toggle speaker for specific post: ensures only 1 video has audio at any time
@@ -199,6 +237,10 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
       className={`w-full h-full overflow-y-auto no-scrollbar pb-24 transition-colors select-none ${
         isDark ? 'bg-black text-white' : 'bg-white text-black'
       }`}
@@ -247,27 +289,30 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
         </div>
       </header>
 
-      {/* 2. PULL-TO-REFRESH CIRCULAR RING SPINNER (Positioned at sub-header level) */}
+      {/* 2. EXACT INSTAGRAM-STYLE SPINNER: Positioned between Header & Stories Tray */}
       <div
+        className="w-full flex items-center justify-center overflow-hidden transition-[height,opacity] duration-300 ease-out pointer-events-none select-none"
         style={{
-          height: `${pullY}px`,
-          opacity: pullY > 5 || isRefreshing ? 1 : 0,
+          height: effectiveRefreshing ? '52px' : pullY > 0 ? `${Math.min(pullY, 56)}px` : '0px',
+          opacity: effectiveRefreshing ? 1 : pullY > 10 ? Math.min((pullY - 10) / 25, 1) : 0,
         }}
-        className="w-full flex items-center justify-center overflow-hidden transition-all duration-200 pointer-events-none"
       >
-        <div className="flex items-center justify-center p-2 rounded-full bg-zinc-950/90 border border-zinc-800 shadow-xl">
+        <div className="flex items-center justify-center py-2.5">
           <div
-            className={`w-5 h-5 rounded-full border-2 border-zinc-700/60 border-t-[#0095f6] border-r-[#0095f6] ${
-              isRefreshing ? 'animate-spin' : ''
-            }`}
+            className={`w-[28px] h-[28px] rounded-full border-[2.5px] ${
+              isDark
+                ? 'border-zinc-800 border-t-white border-r-white'
+                : 'border-zinc-200 border-t-zinc-900 border-r-zinc-900'
+            } ${effectiveRefreshing ? 'animate-spin' : ''}`}
             style={{
-              transform: isRefreshing ? undefined : `rotate(${pullY * 6}deg)`,
+              transform: effectiveRefreshing ? undefined : `rotate(${pullY * 6}deg)`,
+              animationDuration: '0.75s',
             }}
           />
         </div>
       </div>
 
-      {/* 3. INSTAGRAM STORIES TRAY (Directly below top header) */}
+      {/* 3. INSTAGRAM STORIES TRAY (Directly below top header / spinner) */}
       <div className="py-2.5 border-b border-zinc-200/50 dark:border-zinc-800/50">
         <StoriesTray
           stories={stories}
@@ -299,7 +344,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
                 <InstagramPostCard
                   reel={reel}
                   currentUser={currentUser}
-                  isActive={isActiveFeed && isThisPostActive}
+                  isActive={isActiveFeed && !effectiveRefreshing && isThisPostActive}
                   isSoundOn={isThisPostSoundOn}
                   onToggleSound={() => handleTogglePostSound(reel.id)}
                   isMuted={!isThisPostSoundOn}
@@ -310,6 +355,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
                   onOpenShare={onOpenShare}
                   onOpenOptions={onOpenOptions}
                   onOpenReels={(reelId) => onOpenReels?.(reelId, isThisPostSoundOn)}
+                  onOpenProfile={onOpenProfile}
                   onShowToast={onShowToast}
                 />
               </div>

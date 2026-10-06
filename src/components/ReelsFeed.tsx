@@ -23,6 +23,7 @@ interface ReelsFeedProps {
   onRequireAuth?: (promptMessage: string) => void;
   onStoriesVisibilityChange?: (visible: boolean) => void;
   onOpenLikes?: (reelId: string) => void;
+  onOpenProfile?: (username: string) => void;
 }
 
 export const ReelsFeed: React.FC<ReelsFeedProps> = ({
@@ -43,6 +44,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   onRequireAuth,
   onStoriesVisibilityChange,
   onOpenLikes,
+  onOpenProfile,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -395,6 +397,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
                   }
                 }}
                 onOpenLikes={() => onOpenLikes?.(reel.id)}
+                onOpenProfile={onOpenProfile}
                 currentUser={currentUser}
                 onRequireAuth={onRequireAuth}
               />

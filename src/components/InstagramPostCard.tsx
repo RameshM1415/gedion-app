@@ -30,6 +30,7 @@ export interface InstagramPostCardProps {
   onOpenShare: (reelId: string) => void;
   onOpenOptions: (reel: Reel) => void;
   onOpenReels?: (reelId: string) => void;
+  onOpenProfile?: (username: string) => void;
   onShowToast?: (message: string) => void;
 }
 
@@ -47,6 +48,7 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
   onOpenShare,
   onOpenOptions,
   onOpenReels,
+  onOpenProfile,
   onShowToast,
 }) => {
   const { isDark } = useTheme();
@@ -78,6 +80,17 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
       video.pause();
     }
   }, [isActive, effectiveSound]);
+
+  // Clean pause on unmount or card replacement
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) {
+        try {
+          videoRef.current.pause();
+        } catch {}
+      }
+    };
+  }, []);
 
   // Keep in sync with parent props
   useEffect(() => {
@@ -176,7 +189,15 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
       <div className="flex items-center justify-between px-3.5 py-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
           {/* Avatar with subtle signature Instagram gradient ring */}
-          <div className="relative p-[1.5px] rounded-full bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888] shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenProfile?.(reel.username);
+            }}
+            aria-label={`View ${reel.displayName || reel.username}'s profile`}
+            className="relative p-[1.5px] rounded-full bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888] shrink-0 cursor-pointer active:scale-90 hover:opacity-90 transition-transform outline-none"
+          >
             <div className={`p-[1px] rounded-full ${isDark ? 'bg-black' : 'bg-white'}`}>
               <img
                 src={
@@ -188,14 +209,21 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
                 loading="lazy"
               />
             </div>
-          </div>
+          </button>
 
           {/* User details */}
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold tracking-tight truncate cursor-pointer hover:underline">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenProfile?.(reel.username);
+                }}
+                className="text-xs font-bold tracking-tight truncate cursor-pointer hover:underline text-left active:opacity-75 transition-opacity outline-none"
+              >
                 {reel.username}
-              </span>
+              </button>
               {reel.isVerified && (
                 <span className="text-[#0095f6] text-[10px] font-black">●</span>
               )}

@@ -7,6 +7,7 @@ interface BottomNavProps {
   activeTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
   onHomeRefresh?: () => void;
+  onHomeScrollToTop?: () => void;
   isRefreshing?: boolean;
   hasUnreadMessages?: boolean;
   hasUnreadNotifications?: boolean;
@@ -17,6 +18,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
   onSelectTab,
   onHomeRefresh,
+  onHomeScrollToTop,
   isRefreshing = false,
   hasUnreadMessages = false,
   hasUnreadNotifications = false,
@@ -78,6 +80,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       if (activeTab !== 'home') {
         onSelectTab('home');
       }
+      onHomeScrollToTop?.();
       onHomeRefresh?.();
     } else {
       lastHomeTapRef.current = now;
@@ -85,7 +88,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         onSelectTab('home');
       } else {
         singleTapTimerRef.current = window.setTimeout(() => {
-          onHomeRefresh?.();
+          onHomeScrollToTop?.();
         }, DOUBLE_TAP_THRESHOLD);
       }
     }

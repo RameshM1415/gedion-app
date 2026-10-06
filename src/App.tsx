@@ -25,6 +25,7 @@ import { VideoUploadModal } from './components/VideoUploadModal';
 import { supabase, fetchSupabaseReels, deleteReelFromSupabase, updateReelLikesInSupabase } from './utils/supabaseClient';
 import { InstagramFeed } from './components/InstagramFeed';
 import { ReelsHeader } from './components/ReelsHeader';
+import { UserProfileModal } from './components/UserProfileModal';
 import { useTheme } from './context/ThemeContext';
 import {
   AuthUser,
@@ -77,6 +78,7 @@ export const App: React.FC = () => {
   const [navTab, setNavTab] = useState<NavTab>('home');
   const [reelsInitialReelId, setReelsInitialReelId] = useState<string | null>(null);
   const [reelsSubTab, setReelsSubTab] = useState<'forYou' | 'friends'>('forYou');
+  const [selectedProfileUsername, setSelectedProfileUsername] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [createMode, setCreateMode] = useState<'POST' | 'STORY' | 'PHOTO' | 'REEL' | 'LIVE'>('REEL');
@@ -360,18 +362,77 @@ export const App: React.FC = () => {
     setNavTab(tab);
   };
 
-  // Feature 1: Home Button Double-Tap to Refresh & Scroll-to-Top (Live Supabase 'posts' query)
+  const handleHomeScrollToTop = useCallback(() => {
+    setScrollToTopTrigger((prev) => prev + 1);
+  }, []);
+
+  // Instagram-Style Home Feed Refresh & Content Shuffling Logic
   const handleHomeRefresh = async () => {
     setIsStoriesVisible(true);
     setIsRefreshing(true);
+    // 1. Immediately scroll smoothly to the very top (scrollY: 0)
     setScrollToTopTrigger((prev) => prev + 1);
+
+    const startTime = Date.now();
     try {
+      // 2. Re-fetch posts/videos from Supabase
       const cloudReels = await fetchSupabaseReels();
-      if (Array.isArray(cloudReels)) {
-        handleReelsLoaded(cloudReels);
+
+      // Read local custom user creations
+      let localCustom: Reel[] = [];
+      try {
+        const raw = localStorage.getItem('gedion_custom_reels');
+        if (raw) localCustom = JSON.parse(raw);
+      } catch (e) {
+        console.error(e);
       }
-      setFeedToast('✨ Feed updated');
-      setTimeout(() => setFeedToast(null), 2200);
+
+      const cloud = Array.isArray(cloudReels) ? cloudReels : [];
+      // Identify current top post ID before refresh
+      const previousTopId = displayedReels[0]?.id || reels[0]?.id;
+
+      setReels((prev) => {
+        // Pool all reels: local custom, cloud, current, and baseline INITIAL_REELS
+        const combined = [...localCustom, ...cloud, ...prev, ...INITIAL_REELS];
+        const seen = new Set<string>();
+        const pool: Reel[] = [];
+        for (const item of combined) {
+          if (item && item.id && !seen.has(item.id)) {
+            seen.add(item.id);
+            pool.push(item);
+          }
+        }
+
+        if (pool.length <= 1) return pool;
+
+        // Randomize/shuffle feed using Fisher-Yates shuffle
+        const shuffled = [...pool];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        // CRITICAL: The video/post that was showing before refresh must NOT remain at the top;
+        // fresh/different content must appear at the top!
+        if (shuffled[0].id === previousTopId && shuffled.length > 1) {
+          const swapIdx = shuffled.findIndex((r, idx) => idx > 0 && r.id !== previousTopId);
+          if (swapIdx > 0) {
+            [shuffled[0], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[0]];
+          } else {
+            const target = 1 + Math.floor(Math.random() * (shuffled.length - 1));
+            [shuffled[0], shuffled[target]] = [shuffled[target], shuffled[0]];
+          }
+        }
+
+        return shuffled;
+      });
+
+      // Ensure minimum duration (~750ms) for sleek spinner animation
+      const elapsed = Date.now() - startTime;
+      const minDuration = 750;
+      if (elapsed < minDuration) {
+        await new Promise((res) => setTimeout(res, minDuration - elapsed));
+      }
     } catch (err) {
       console.warn('Error refreshing posts from Supabase:', err);
     } finally {
@@ -559,6 +620,8 @@ export const App: React.FC = () => {
               currentUser={currentUser}
               isActiveFeed={navTab === 'home'}
               isMuted={isMuted}
+              isRefreshing={isRefreshing}
+              onRefreshFeed={handleHomeRefresh}
               onToggleMute={handleToggleMute}
               onToggleLike={handleToggleLike}
               onToggleBookmark={handleToggleBookmark}
@@ -566,6 +629,7 @@ export const App: React.FC = () => {
               onOpenShare={handleOpenShare}
               onOpenOptions={handleOpenOptions}
               onOpenReels={handleOpenReelsFromHome}
+              onOpenProfile={(username) => setSelectedProfileUsername(username)}
               onOpenYourStory={handleOpenAddStory}
               onSelectStory={handleSelectStory}
               onOpenCreate={() => {
@@ -602,6 +666,7 @@ export const App: React.FC = () => {
                 onOpenReport={handleOpenReport}
                 onOpenOptions={handleOpenOptions}
                 onOpenLikes={(reelId) => setLikesReelId(reelId)}
+                onOpenProfile={(username) => setSelectedProfileUsername(username)}
                 scrollToTopTrigger={scrollToTopTrigger}
                 onReelsLoaded={handleReelsLoaded}
                 onNewRealtimeReel={handleNewRealtimeReel}
@@ -647,9 +712,8 @@ export const App: React.FC = () => {
             <ExploreView
               onClose={() => setNavTab('home')}
               reels={reels}
-              onOpenProfile={() => {
-                setChatTargetUser(null);
-                setNavTab('profile');
+              onOpenProfile={(username) => {
+                setSelectedProfileUsername(username);
               }}
               onOpenChatWithUser={(username) => {
                 setChatTargetUser(username);
@@ -752,20 +816,7 @@ export const App: React.FC = () => {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {isRefreshing && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -15, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="absolute top-16 left-1/2 -translate-x-1/2 z-[95] flex items-center gap-2.5 px-4 py-2 rounded-full bg-black/90 border border-white/20 text-xs font-bold text-white shadow-2xl backdrop-blur-xl pointer-events-none"
-            >
-              <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-cyan-400 animate-spin" />
-              <span>Refreshing feed...</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
 
         <AnimatePresence>
           {feedToast && (
@@ -891,6 +942,7 @@ export const App: React.FC = () => {
           activeTab={navTab}
           onSelectTab={handleSelectNavTab}
           onHomeRefresh={handleHomeRefresh}
+          onHomeScrollToTop={handleHomeScrollToTop}
           isRefreshing={isRefreshing}
           hasUnreadMessages={false}
           hasUnreadNotifications={false}
@@ -939,6 +991,24 @@ export const App: React.FC = () => {
         onClose={() => setIsAddStoryOpen(false)}
         onPublishStory={handlePublishStory}
         currentUser={currentUser}
+      />
+
+      {/* Creator Public Profile Modal (Clickable avatar / username from Reels & Feed) */}
+      <UserProfileModal
+        isOpen={Boolean(selectedProfileUsername)}
+        onClose={() => setSelectedProfileUsername(null)}
+        username={selectedProfileUsername}
+        reels={reels}
+        currentUser={currentUser}
+        onOpenChatWithUser={(targetUser) => {
+          setSelectedProfileUsername(null);
+          setChatTargetUser(targetUser);
+          setNavTab('messages');
+        }}
+        onOpenReel={(reelId) => {
+          setSelectedProfileUsername(null);
+          handleOpenReelsFromHome(reelId);
+        }}
       />
     </div>
   );
