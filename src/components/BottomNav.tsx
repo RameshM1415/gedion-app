@@ -371,10 +371,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     ? 'bg-[#000000] border-t border-[#262626] text-white'
     : 'bg-[#ffffff] border-t border-[#dbdbdb] text-[#000000] shadow-sm';
 
-  // Elevated height and extended bottom padding in Reels tab (like native Instagram)
+  // Elevated height and extended bottom safe-area padding to lift navigation icons comfortably from screen base
   const barHeightClasses = isReelsTab
     ? 'h-[76px] pb-4 pt-1'
-    : 'h-[50px] pb-0.5';
+    : 'h-[58px] pb-2.5 pt-1';
 
   // High-contrast icon colors: deep jet black (#000000) active / sharp #262626 inactive on light, pure white (#ffffff) on dark/reels
   const getIconColor = (isActive: boolean) => {

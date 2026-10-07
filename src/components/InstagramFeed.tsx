@@ -75,6 +75,10 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   const touchStartYRef = useRef<number | null>(null);
   const isDraggingPullRef = useRef(false);
 
+  // 3. Scroll-Direction Aware Auto-Hiding Top Header State
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const lastScrollYRef = useRef(0);
+
   // When reels change (content updated/shuffled), reset active post to the new top video and pause previous
   useEffect(() => {
     if (reels.length > 0) {
@@ -114,13 +118,29 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
     }
   }, [reels, activePostId]);
 
-  // Attach throttled scroll listener for active post detection
+  // Attach throttled scroll listener for active post detection and scroll-direction header toggle
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     let ticking = false;
     const onScroll = () => {
+      const currentScrollY = container.scrollTop;
+      const scrollDiff = currentScrollY - lastScrollYRef.current;
+
+      // When user reaches near the very top (scrollY <= 10) or scrolls UP: show header
+      if (currentScrollY <= 10) {
+        setIsHeaderVisible(true);
+      } else if (scrollDiff > 6) {
+        // Scrolling DOWN: smoothly slide header UPWARDS out of view
+        setIsHeaderVisible(false);
+      } else if (scrollDiff < -6) {
+        // Scrolling UP: instantly slide header DOWN back into view
+        setIsHeaderVisible(true);
+      }
+
+      lastScrollYRef.current = currentScrollY;
+
       if (!ticking) {
         window.requestAnimationFrame(() => {
           checkActivePost();
@@ -142,6 +162,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   // Smooth scroll to top on Home double-tap or refresh trigger
   useEffect(() => {
     if (scrollToTopTrigger !== undefined && scrollToTopTrigger > 0) {
+      setIsHeaderVisible(true);
       if (containerRef.current) {
         containerRef.current.scrollTo({
           top: 0,
@@ -241,13 +262,15 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      className={`w-full h-full overflow-y-auto no-scrollbar pb-24 transition-colors select-none ${
+      className={`w-full h-full overflow-y-auto no-scrollbar pb-20 transition-colors select-none ${
         isDark ? 'bg-black text-white' : 'bg-white text-black'
       }`}
     >
       {/* 1. TOP HEADER BAR: Sleek modern GediOn brand title, Activity, & Direct Messages */}
       <header
-        className={`sticky top-0 z-30 flex flex-col w-full border-b backdrop-blur-md transition-colors ${
+        className={`sticky top-0 z-30 flex flex-col w-full border-b backdrop-blur-md transition-transform duration-300 ease-in-out ${
+          isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
+        } ${
           isDark
             ? 'bg-black/95 border-[#262626] text-white'
             : 'bg-[#ffffff] border-[#dbdbdb] text-black'
