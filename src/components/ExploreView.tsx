@@ -220,23 +220,27 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   return (
     <div
       className={`absolute inset-0 z-40 flex flex-col select-none transition-colors ${
-        isDark ? 'bg-[#000000] text-white' : 'bg-white text-black'
+        isDark ? 'bg-[#000000] text-white' : 'bg-[#ffffff] text-black'
       }`}
     >
       {/* 1. TOP SEARCH BAR HEADER */}
       <div
-        className={`flex items-center gap-2.5 px-4 pt-3.5 pb-2.5 shrink-0 border-b backdrop-blur-md z-10 transition-colors ${
-          isDark ? 'bg-black/90 border-[#262626]' : 'bg-white/90 border-[#efefef]'
+        className={`flex flex-col shrink-0 border-b backdrop-blur-md z-10 transition-colors ${
+          isDark ? 'bg-black/95 border-[#262626]' : 'bg-[#ffffff] border-[#dbdbdb]'
         }`}
       >
-        {/* Search Input Container */}
-        <div
-          className={`flex-1 flex items-center rounded-2xl px-3.5 py-2 transition-all ${
-            isDark
-              ? 'bg-[#18181b] border border-[#27272a] focus-within:border-[#0095f6]'
-              : 'bg-zinc-100 border border-zinc-200 focus-within:border-[#0095f6]'
-          }`}
-        >
+        {/* Top safe-area filler */}
+        <div className="w-full pt-[env(safe-area-inset-top,0px)]" />
+
+        <div className="flex items-center gap-2.5 px-4 pt-2.5 pb-2.5">
+          {/* Search Input Container */}
+          <div
+            className={`flex-1 flex items-center rounded-2xl px-3.5 py-2 transition-all ${
+              isDark
+                ? 'bg-[#18181b] border border-[#27272a] focus-within:border-[#0095f6]'
+                : 'bg-zinc-100 border border-zinc-200 focus-within:border-[#0095f6]'
+            }`}
+          >
           <Search size={16} className="text-zinc-400 shrink-0 mr-2.5" />
           <input
             type="text"
@@ -267,6 +271,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           <X size={20} />
         </button>
       </div>
+    </div>
 
       {/* 2. REAL-TIME SEARCH RESULTS OR EXPLORE GRID */}
       <div className="flex-1 overflow-y-auto px-3 pt-2 pb-24 no-scrollbar">

@@ -247,45 +247,51 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
     >
       {/* 1. TOP HEADER BAR: Sleek modern GediOn brand title, Activity, & Direct Messages */}
       <header
-        className={`sticky top-0 z-30 flex items-center justify-between px-4 h-[48px] border-b backdrop-blur-md transition-colors ${
+        className={`sticky top-0 z-30 flex flex-col w-full border-b backdrop-blur-md transition-colors ${
           isDark
-            ? 'bg-black/90 border-[#262626] text-white'
-            : 'bg-white/90 border-[#efefef] text-black'
+            ? 'bg-black/95 border-[#262626] text-white'
+            : 'bg-[#ffffff] border-[#dbdbdb] text-black'
         }`}
       >
-        <span
-          onClick={() => {
-            if (containerRef.current) {
-              containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-          }}
-          className={`font-sans font-black text-[23px] sm:text-[25px] tracking-[-0.04em] select-none cursor-pointer active:scale-95 transition-all ${
-            isDark ? 'text-white' : 'text-zinc-950'
-          }`}
-        >
-          GediOn
-        </span>
+        {/* Top safe-area filler ensuring white background extends flush edge-to-edge under status bar */}
+        <div className="w-full pt-[env(safe-area-inset-top,0px)]" />
 
-        <div className="flex items-center gap-3">
-          {/* Activity / Notifications (Heart) */}
-          <button
-            type="button"
-            onClick={onOpenActivity}
-            aria-label="Activity notifications"
-            className="p-1 active:scale-90 transition-transform cursor-pointer"
+        {/* Clean vertically centered header content row */}
+        <div className="flex items-center justify-between px-4 h-[44px] sm:h-[48px] w-full">
+          <span
+            onClick={() => {
+              if (containerRef.current) {
+                containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+            className={`font-sans font-black text-[23px] sm:text-[25px] tracking-[-0.04em] select-none cursor-pointer active:scale-95 transition-all ${
+              isDark ? 'text-white' : 'text-zinc-950'
+            }`}
           >
-            <Heart size={24} strokeWidth={1.8} />
-          </button>
+            GediOn
+          </span>
 
-          {/* Direct Messages (Send / Paper Plane) */}
-          <button
-            type="button"
-            onClick={onOpenMessages}
-            aria-label="Direct messages"
-            className="p-1 active:scale-90 transition-transform cursor-pointer"
-          >
-            <Send size={22} strokeWidth={1.8} className="-rotate-12 translate-y-[-1px]" />
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Activity / Notifications (Heart) */}
+            <button
+              type="button"
+              onClick={onOpenActivity}
+              aria-label="Activity notifications"
+              className="p-1 active:scale-90 transition-transform cursor-pointer"
+            >
+              <Heart size={24} strokeWidth={1.8} />
+            </button>
+
+            {/* Direct Messages (Send / Paper Plane) */}
+            <button
+              type="button"
+              onClick={onOpenMessages}
+              aria-label="Direct messages"
+              className="p-1 active:scale-90 transition-transform cursor-pointer"
+            >
+              <Send size={22} strokeWidth={1.8} className="-rotate-12 translate-y-[-1px]" />
+            </button>
+          </div>
         </div>
       </header>
 

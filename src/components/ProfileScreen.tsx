@@ -812,8 +812,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      className={`absolute inset-0 z-30 flex flex-col pt-3 pb-24 px-4 overflow-y-auto no-scrollbar select-none transition-colors ${
-        isDark ? 'bg-black text-white' : 'bg-white text-black'
+      className={`absolute inset-0 z-30 flex flex-col pt-0 pb-24 px-4 overflow-y-auto no-scrollbar select-none transition-colors ${
+        isDark ? 'bg-black text-white' : 'bg-[#ffffff] text-black'
       }`}
     >
       {/* Toast Notification */}
@@ -833,68 +833,73 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* 1. Sticky Top Header: Username with verification badge, settings gear icon, and share profile action */}
       <header
-        className={`sticky top-0 z-20 flex items-center justify-between pb-3 -mx-4 px-4 pt-1 border-b shrink-0 backdrop-blur-md transition-colors ${
-          isDark ? 'bg-black/95 border-[#262626]' : 'bg-white/95 border-[#efefef]'
+        className={`sticky top-0 z-20 flex flex-col -mx-4 border-b shrink-0 backdrop-blur-md transition-colors ${
+          isDark ? 'bg-black/95 border-[#262626]' : 'bg-[#ffffff] border-[#dbdbdb]'
         }`}
       >
-        <div className="flex items-center gap-1.5">
-          <span className="font-bold text-base tracking-tight">@{profile.username}</span>
-          {currentUser && (
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#0095f6] text-white text-[10px] font-black">
-              ✓
-            </span>
-          )}
-          {currentUser ? (
+        {/* Top safe-area filler */}
+        <div className="w-full pt-[env(safe-area-inset-top,0px)]" />
+
+        <div className="flex items-center justify-between px-4 h-[44px] w-full">
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-base tracking-tight">@{profile.username}</span>
+            {currentUser && (
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#0095f6] text-white text-[10px] font-black">
+                ✓
+              </span>
+            )}
+            {currentUser ? (
+              <button
+                type="button"
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-500/10 border border-zinc-500/20 text-[10px] font-semibold text-zinc-400"
+              >
+                <ShieldCheck size={11} />
+                <span>Verified</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpenAuthModal?.('Sign in to access your creator profile & reels!')}
+                className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-semibold text-blue-500 cursor-pointer"
+              >
+                <LogIn size={10} />
+                <span>Guest</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Share Profile Action Button */}
+            <button
+              type="button"
+              onClick={() => setIsShareModalOpen(true)}
+              aria-label="Share profile"
+              className="p-2 rounded-full hover:opacity-75 active:scale-95 transition-all"
+            >
+              <Share2 size={18} />
+            </button>
+
+            {/* Settings Gear Icon Button */}
             <button
               type="button"
               onClick={() => setIsSettingsModalOpen(true)}
-              className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-500/10 border border-zinc-500/20 text-[10px] font-semibold text-zinc-400"
+              aria-label="Settings"
+              className="p-2 rounded-full hover:opacity-75 active:scale-95 transition-all"
             >
-              <ShieldCheck size={11} />
-              <span>Verified</span>
+              <Settings size={18} />
             </button>
-          ) : (
+
+            {/* Close / Back to Feed */}
             <button
               type="button"
-              onClick={() => onOpenAuthModal?.('Sign in to access your creator profile & reels!')}
-              className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-semibold text-blue-500 cursor-pointer"
+              onClick={onClose}
+              aria-label="Back to Feed"
+              className="p-2 rounded-full hover:opacity-75 active:scale-95 transition-all"
             >
-              <LogIn size={10} />
-              <span>Guest</span>
+              <X size={18} />
             </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1">
-          {/* Share Profile Action Button */}
-          <button
-            type="button"
-            onClick={() => setIsShareModalOpen(true)}
-            aria-label="Share profile"
-            className="p-2 rounded-full hover:opacity-75 active:scale-95 transition-all"
-          >
-            <Share2 size={18} />
-          </button>
-
-          {/* Settings Gear Icon Button */}
-          <button
-            type="button"
-            onClick={() => setIsSettingsModalOpen(true)}
-            aria-label="Settings"
-            className="p-2 rounded-full hover:opacity-75 active:scale-95 transition-all"
-          >
-            <Settings size={18} />
-          </button>
-
-          {/* Close / Back to Feed */}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Back to Feed"
-            className="p-2 rounded-full hover:opacity-75 active:scale-95 transition-all"
-          >
-            <X size={18} />
-          </button>
+          </div>
         </div>
       </header>
 

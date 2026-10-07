@@ -10,10 +10,10 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: 'light',
   toggleTheme: () => {},
   setTheme: () => {},
-  isDark: true,
+  isDark: false,
 });
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -22,7 +22,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const saved = localStorage.getItem('gedion_theme_mode');
       if (saved === 'light' || saved === 'dark') return saved;
     } catch {}
-    return 'dark'; // Default to VIP OLED Dark Mode
+    return 'light'; // Default to clean Instagram pure white mode
   });
 
   useEffect(() => {

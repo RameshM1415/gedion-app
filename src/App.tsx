@@ -515,6 +515,34 @@ export const App: React.FC = () => {
     };
   }, [handleReelsLoaded]);
 
+  // Dynamic HTML Meta Theme-Color & Status Bar Synchronization
+  useEffect(() => {
+    const isReelsView = navTab === 'reels';
+    const targetThemeColor = isReelsView || isDark ? '#000000' : '#ffffff';
+
+    // 1. Update <meta name="theme-color">
+    let metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (!metaTheme) {
+      metaTheme = document.createElement('meta');
+      metaTheme.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaTheme);
+    }
+    metaTheme.setAttribute('content', targetThemeColor);
+
+    // 2. Update <meta name="apple-mobile-web-app-status-bar-style">
+    let appleStatus = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (appleStatus) {
+      appleStatus.setAttribute(
+        'content',
+        isReelsView || isDark ? 'black-translucent' : 'default'
+      );
+    }
+
+    // 3. Ensure body & root HTML backgrounds stay pure white on regular pages and black on Reels
+    document.body.style.backgroundColor = targetThemeColor;
+    document.documentElement.style.backgroundColor = targetThemeColor;
+  }, [navTab, isDark]);
+
   // Publish Action & State Update
   const handlePublishReel = (newReel: Reel) => {
     const creatorUser = currentUser;
@@ -623,11 +651,15 @@ export const App: React.FC = () => {
     );
   };
 
+  const isReelsView = navTab === 'reels';
+  const rootBgClass = isReelsView || isDark ? 'bg-[#000000]' : 'bg-[#ffffff] md:bg-[#f4f4f4]';
+  const mainBgClass = isReelsView || isDark
+    ? 'bg-black text-white md:border-[#262626]'
+    : 'bg-[#ffffff] text-black md:border-[#efefef]';
+
   return (
     <div
-      className={`relative flex h-[100dvh] w-screen items-center justify-center overflow-hidden transition-colors ${
-        isDark ? 'bg-[#000000]' : 'bg-[#f4f4f4]'
-      }`}
+      className={`relative flex h-[100dvh] w-screen items-start md:items-center justify-center overflow-hidden transition-colors ${rootBgClass}`}
     >
       {/* Initial App Launch / Splash Screen */}
       <AnimatePresence>
@@ -638,11 +670,7 @@ export const App: React.FC = () => {
 
       {/* Mobile-first viewport container (Clean Instagram device frame) */}
       <main
-        className={`relative h-[100dvh] max-h-[100dvh] w-full max-w-[440px] md:h-[94vh] md:max-h-[890px] md:rounded-[36px] overflow-hidden shadow-2xl transition-colors md:border select-none ${
-          isDark
-            ? 'bg-black text-white md:border-[#262626]'
-            : 'bg-white text-black md:border-[#efefef]'
-        }`}
+        className={`relative h-full min-h-[100dvh] max-h-[100dvh] w-full max-w-[440px] md:h-[94vh] md:max-h-[890px] md:rounded-[36px] overflow-hidden shadow-2xl transition-colors md:border select-none ${mainBgClass}`}
       >
         {/* Main Tab Views */}
         <div className="relative h-full w-full overflow-hidden">
@@ -723,7 +751,7 @@ export const App: React.FC = () => {
               />
 
               {/* Floating Instagram Reels Top Header: Back Arrow (←), "Reels | Friends" tabs, and Camera Action */}
-              <div className="absolute top-0 inset-x-0 z-30 pointer-events-none flex flex-col bg-gradient-to-b from-black/85 via-black/40 to-transparent pt-1.5 pb-2 transition-all duration-300">
+              <div className="absolute top-0 inset-x-0 z-30 pointer-events-none flex flex-col bg-gradient-to-b from-black/85 via-black/40 to-transparent pt-[env(safe-area-inset-top,6px)] pb-2 transition-all duration-300">
                 <ReelsHeader
                   activeSubTab={reelsSubTab}
                   onSubTabChange={setReelsSubTab}

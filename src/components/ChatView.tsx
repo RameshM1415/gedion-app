@@ -507,31 +507,34 @@ export const ChatView: React.FC<ChatViewProps> = ({
             className="flex flex-col h-full w-full pb-20 overflow-y-auto no-scrollbar"
           >
             {/* Top Bar */}
-            <div className="sticky top-0 z-10 flex items-center justify-between px-4 pt-3.5 pb-2.5 bg-[#07070b]/95 backdrop-blur-xl border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={onClose}
-                  aria-label="Back to Feed"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <div className="flex items-center gap-1.5 cursor-pointer">
-                  <span className="text-base md:text-lg font-extrabold tracking-tight text-white">
-                    ankurarya4095
-                  </span>
-                  <div className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4]" />
+            <div className="sticky top-0 z-10 flex flex-col bg-[#07070b]/95 backdrop-blur-xl border-b border-white/10">
+              <div className="w-full pt-[env(safe-area-inset-top,0px)]" />
+              <div className="flex items-center justify-between px-4 pt-1.5 pb-2.5">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={onClose}
+                    aria-label="Back to Feed"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <div className="flex items-center gap-1.5 cursor-pointer">
+                    <span className="text-base md:text-lg font-extrabold tracking-tight text-white">
+                      ankurarya4095
+                    </span>
+                    <div className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4]" />
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowNewChatModal(true)}
-                  aria-label="New Direct Message"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 border border-white/10 hover:border-cyan-400/50 text-cyan-300 hover:text-white transition-all active:scale-95"
-                >
-                  <SquarePen size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowNewChatModal(true)}
+                    aria-label="New Direct Message"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 border border-white/10 hover:border-cyan-400/50 text-cyan-300 hover:text-white transition-all active:scale-95"
+                  >
+                    <SquarePen size={18} />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -727,64 +730,67 @@ export const ChatView: React.FC<ChatViewProps> = ({
             className="flex flex-col h-full w-full bg-[#07070b] overflow-hidden"
           >
             {/* Active Chat Top Bar */}
-            <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#0a0a10]/95 backdrop-blur-xl border-b border-white/10 z-20">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <button
-                  onClick={() => setActiveConversationId(null)}
-                  aria-label="Back to Inbox"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white shrink-0"
-                >
-                  <ArrowLeft size={20} />
-                </button>
+            <div className="flex flex-col bg-[#0a0a10]/95 backdrop-blur-xl border-b border-white/10 z-20">
+              <div className="w-full pt-[env(safe-area-inset-top,0px)]" />
+              <div className="flex items-center justify-between px-3.5 py-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <button
+                    onClick={() => setActiveConversationId(null)}
+                    aria-label="Back to Inbox"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white shrink-0"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
 
-                <div className="relative shrink-0">
-                  <img
-                    src={activeConversation.avatar}
-                    alt={activeConversation.displayName}
-                    className="w-10 h-10 rounded-full object-cover border border-white/15"
-                  />
-                  {activeConversation.isOnline && (
-                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-400 border-2 border-black shadow-[0_0_6px_#34d399]" />
-                  )}
-                </div>
-
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-bold text-white truncate">
-                      {activeConversation.displayName}
-                    </h3>
-                    {activeConversation.isVerified && (
-                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-cyan-400 text-black text-[9px] font-bold shrink-0">
-                        ✓
-                      </span>
+                  <div className="relative shrink-0">
+                    <img
+                      src={activeConversation.avatar}
+                      alt={activeConversation.displayName}
+                      className="w-10 h-10 rounded-full object-cover border border-white/15"
+                    />
+                    {activeConversation.isOnline && (
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-400 border-2 border-black shadow-[0_0_6px_#34d399]" />
                     )}
                   </div>
-                  <span className="text-[11px] text-white/50 block truncate">
-                    {activeConversation.isOnline ? (
-                      <span className="text-emerald-400 font-medium">● Active now</span>
-                    ) : (
-                      activeConversation.lastSeen || `@${activeConversation.username}`
-                    )}
-                  </span>
-                </div>
-              </div>
 
-              {/* Decorative Audio/Video call tools */}
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => alert(`Starting voice call with ${activeConversation.displayName}...`)}
-                  aria-label="Voice Call"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
-                >
-                  <Phone size={17} />
-                </button>
-                <button
-                  onClick={() => alert(`Starting video call with ${activeConversation.displayName}...`)}
-                  aria-label="Video Call"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
-                >
-                  <Video size={18} />
-                </button>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-sm font-bold text-white truncate">
+                        {activeConversation.displayName}
+                      </h3>
+                      {activeConversation.isVerified && (
+                        <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-cyan-400 text-black text-[9px] font-bold shrink-0">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-white/50 block truncate">
+                      {activeConversation.isOnline ? (
+                        <span className="text-emerald-400 font-medium">● Active now</span>
+                      ) : (
+                        activeConversation.lastSeen || `@${activeConversation.username}`
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Decorative Audio/Video call tools */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => alert(`Starting voice call with ${activeConversation.displayName}...`)}
+                    aria-label="Voice Call"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+                  >
+                    <Phone size={17} />
+                  </button>
+                  <button
+                    onClick={() => alert(`Starting video call with ${activeConversation.displayName}...`)}
+                    aria-label="Video Call"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+                  >
+                    <Video size={18} />
+                  </button>
+                </div>
               </div>
             </div>
 

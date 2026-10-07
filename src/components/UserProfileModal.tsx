@@ -363,35 +363,38 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         className="fixed inset-0 z-[80] max-w-[440px] mx-auto h-[100dvh] flex flex-col bg-black text-white select-none overflow-hidden"
       >
         {/* Top Header Bar: Left Arrow (←), Username Title, and Right Actions */}
-        <header className="w-full h-12 px-3 flex items-center justify-between border-b border-zinc-800/80 bg-black/95 backdrop-blur-md shrink-0 z-10">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Back"
-              className="p-1.5 -ml-1 rounded-full text-white/90 hover:text-white hover:bg-zinc-800/80 active:scale-90 transition-transform cursor-pointer"
-            >
-              <ArrowLeft size={22} strokeWidth={2.4} />
-            </button>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="font-bold text-base tracking-tight truncate max-w-[200px]">
-                {username}
-              </span>
-              {creatorSampleReel?.isVerified && (
-                <BadgeCheck size={16} className="fill-[#0095f6] text-black shrink-0" />
-              )}
+        <header className="w-full flex flex-col border-b border-zinc-800/80 bg-black/95 backdrop-blur-md shrink-0 z-10">
+          <div className="w-full pt-[env(safe-area-inset-top,0px)]" />
+          <div className="w-full h-12 px-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Back"
+                className="p-1.5 -ml-1 rounded-full text-white/90 hover:text-white hover:bg-zinc-800/80 active:scale-90 transition-transform cursor-pointer"
+              >
+                <ArrowLeft size={22} strokeWidth={2.4} />
+              </button>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-bold text-base tracking-tight truncate max-w-[200px]">
+                  {username}
+                </span>
+                {creatorSampleReel?.isVerified && (
+                  <BadgeCheck size={16} className="fill-[#0095f6] text-black shrink-0" />
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={handleShareProfile}
-              aria-label="Share profile"
-              className="p-2 rounded-full text-zinc-300 hover:text-white hover:bg-zinc-800 active:scale-90 transition-all cursor-pointer"
-            >
-              <Share2 size={19} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleShareProfile}
+                aria-label="Share profile"
+                className="p-2 rounded-full text-zinc-300 hover:text-white hover:bg-zinc-800 active:scale-90 transition-all cursor-pointer"
+              >
+                <Share2 size={19} />
+              </button>
+            </div>
           </div>
         </header>
 

@@ -24,28 +24,31 @@ export const ActivityView: React.FC<ViewProps> = ({ onClose }) => {
 
   return (
     <div
-      className={`absolute inset-0 z-30 flex flex-col pt-3 pb-20 px-4 overflow-y-auto no-scrollbar transition-colors ${
-        isDark ? 'bg-black text-white' : 'bg-white text-black'
+      className={`absolute inset-0 z-30 flex flex-col pt-0 pb-20 overflow-y-auto no-scrollbar transition-colors ${
+        isDark ? 'bg-black text-white' : 'bg-[#ffffff] text-black'
       }`}
     >
       {/* Header */}
-      <div
-        className={`flex items-center justify-between pb-3 border-b ${
-          isDark ? 'border-[#262626]' : 'border-[#efefef]'
+      <header
+        className={`sticky top-0 z-10 flex flex-col border-b backdrop-blur-md transition-colors ${
+          isDark ? 'bg-black/95 border-[#262626]' : 'bg-[#ffffff] border-[#dbdbdb]'
         }`}
       >
-        <div className="flex items-center gap-2">
-          <Heart size={22} className="text-rose-500 fill-rose-500" />
-          <h2 className="text-lg font-bold tracking-tight">Notifications</h2>
+        <div className="w-full pt-[env(safe-area-inset-top,0px)]" />
+        <div className="flex items-center justify-between px-4 h-[48px]">
+          <div className="flex items-center gap-2">
+            <Heart size={22} className="text-rose-500 fill-rose-500" />
+            <h2 className="text-lg font-bold tracking-tight">Notifications</h2>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close Notifications"
+            className="p-1.5 rounded-full hover:opacity-75 active:scale-95 transition-all"
+          >
+            <X size={20} />
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          aria-label="Close Notifications"
-          className="p-1.5 rounded-full hover:opacity-75 transition-opacity"
-        >
-          <X size={20} />
-        </button>
-      </div>
+      </header>
 
       {/* Clean Instagram Activity Zero-State Screen */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
