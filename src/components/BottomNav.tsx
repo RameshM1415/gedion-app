@@ -106,10 +106,25 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   const handleReelsClick = (e: React.MouseEvent) => {
     e.preventDefault();
+
+    // 1. If user is NOT on the reels tab: Simply switch to Reels tab and keep current reel playing!
+    // Never trigger refresh or scroll-to-top when switching tabs
+    if (activeTab !== 'reels') {
+      if (singleReelsTapTimerRef.current) {
+        clearTimeout(singleReelsTapTimerRef.current);
+        singleReelsTapTimerRef.current = null;
+      }
+      lastReelsTapRef.current = 0;
+      onSelectTab('reels');
+      return;
+    }
+
+    // 2. User is ALREADY on Reels tab: Debounce single-tap from double-tap (280ms threshold)
     const now = Date.now();
-    const DOUBLE_TAP_THRESHOLD = 320; // 320ms window for double tap
+    const DOUBLE_TAP_THRESHOLD = 280; // 280ms window for double tap
 
     if (now - lastReelsTapRef.current < DOUBLE_TAP_THRESHOLD) {
+      // Double tap detected while already on Reels view!
       if (singleReelsTapTimerRef.current) {
         clearTimeout(singleReelsTapTimerRef.current);
         singleReelsTapTimerRef.current = null;
@@ -123,24 +138,21 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         } catch {}
       }
 
-      // Trigger 360-degree rotation spin animation on clapperboard icon
+      // Trigger spin animation on clapperboard icon
       setIsReelsDoubleTapSpinning(true);
-      setTimeout(() => setIsReelsDoubleTapSpinning(false), 900);
+      setTimeout(() => setIsReelsDoubleTapSpinning(false), 600);
 
-      if (activeTab !== 'reels') {
-        onSelectTab('reels');
-      }
-      onReelsScrollToTop?.();
       onReelsRefresh?.();
     } else {
+      // First tap while already on Reels tab: record timestamp
       lastReelsTapRef.current = now;
-      if (activeTab !== 'reels') {
-        onSelectTab('reels');
-      } else {
-        singleReelsTapTimerRef.current = window.setTimeout(() => {
-          onReelsScrollToTop?.();
-        }, DOUBLE_TAP_THRESHOLD);
+      if (singleReelsTapTimerRef.current) {
+        clearTimeout(singleReelsTapTimerRef.current);
       }
+      singleReelsTapTimerRef.current = window.setTimeout(() => {
+        singleReelsTapTimerRef.current = null;
+        // Single tap on Reels tab just keeps current reel playing smoothly
+      }, DOUBLE_TAP_THRESHOLD);
     }
   };
 

@@ -53,9 +53,19 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
 
   // Live posts state populated strictly from Supabase 'posts' table
   const [feedReels, setFeedReels] = useState<Reel[]>(reels);
-  const [isFetchingCloud, setIsFetchingCloud] = useState(true);
+  const [isFetchingCloud, setIsFetchingCloud] = useState(() => !reels || reels.length === 0);
   const [fetchGlitch, setFetchGlitch] = useState(false);
   const [isReelsRefreshing, setIsReelsRefreshing] = useState(false);
+
+  // References to prevent triggering refresh or scroll-to-top on initial tab switch/mount
+  const lastTriggerRef = useRef(reelsRefreshTrigger);
+  const lastScrollToTopRef = useRef(scrollToTopTrigger);
+
+  // Ensure spinner is hidden on mount
+  useEffect(() => {
+    setIsReelsRefreshing(false);
+    setPullY(0);
+  }, []);
 
   // Jump to initialReelId on mount or when requested from home feed
   useEffect(() => {
@@ -178,9 +188,10 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
     setFeedReels(reels);
   }, [reels]);
 
-  // Smooth scroll to top & refetch on refresh trigger
+  // Smooth scroll to top ONLY when scrollToTopTrigger increments after mount
   useEffect(() => {
-    if (scrollToTopTrigger !== undefined && scrollToTopTrigger > 0) {
+    if (scrollToTopTrigger !== undefined && scrollToTopTrigger > (lastScrollToTopRef.current || 0)) {
+      lastScrollToTopRef.current = scrollToTopTrigger;
       if (containerRef.current) {
         containerRef.current.scrollTo({
           top: 0,
@@ -189,9 +200,10 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
         setActiveIndex(0);
       }
       onStoriesVisibilityChange?.(true);
-      fetchReels(true);
+    } else {
+      lastScrollToTopRef.current = scrollToTopTrigger;
     }
-  }, [scrollToTopTrigger, fetchReels, onStoriesVisibilityChange]);
+  }, [scrollToTopTrigger, onStoriesVisibilityChange]);
 
   // Instagram-Style Reels Refresh & Content Shuffling Logic (Double-Tap & Pull-to-Refresh)
   const performReelsRefreshAndShuffle = useCallback(async () => {
@@ -199,12 +211,19 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
     setIsReelsRefreshing(true);
     setPullY(45); // Reveal the top circular refresh ring
 
-    // Immediately stop video playback & reset scroll container to top index 0
+    // Instantly scroll/snap container to top index 0
     if (containerRef.current) {
       containerRef.current.scrollTop = 0;
     }
     setActiveIndex(0);
     onStoriesVisibilityChange?.(true);
+
+    // Safety timeout: Spinner must NEVER stay stuck on screen (max 550ms)
+    const safetyTimer = setTimeout(() => {
+      setIsReelsRefreshing(false);
+      setIsPullRefreshing(false);
+      setPullY(0);
+    }, 550);
 
     try {
       // Re-query fresh reels directly from Supabase
@@ -251,9 +270,9 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
       }
     } catch (err: any) {
       console.warn('Network exception while refreshing reels:', err);
-      setFetchGlitch(true);
     } finally {
-      // Smoothly collapse spinner and ensure clean 0ms autoplay switch
+      clearTimeout(safetyTimer);
+      // Smoothly collapse spinner within max 500ms and ensure clean autoplay switch
       setTimeout(() => {
         setIsReelsRefreshing(false);
         setIsPullRefreshing(false);
@@ -262,14 +281,17 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
           containerRef.current.scrollTop = 0;
         }
         setActiveIndex(0);
-      }, 700);
+      }, 500);
     }
   }, [activeIndex, feedReels, onReelsLoaded, onStoriesVisibilityChange]);
 
-  // Trigger double-tap refresh and shuffle when reelsRefreshTrigger changes
+  // Trigger double-tap refresh and shuffle ONLY when reelsRefreshTrigger increments after mount
   useEffect(() => {
-    if (reelsRefreshTrigger !== undefined && reelsRefreshTrigger > 0) {
+    if (reelsRefreshTrigger !== undefined && reelsRefreshTrigger > (lastTriggerRef.current || 0)) {
+      lastTriggerRef.current = reelsRefreshTrigger;
       performReelsRefreshAndShuffle();
+    } else {
+      lastTriggerRef.current = reelsRefreshTrigger;
     }
   }, [reelsRefreshTrigger, performReelsRefreshAndShuffle]);
 

@@ -120,23 +120,40 @@ export const ReelItem: React.FC<ReelItemProps> = ({
 
     if (isActive) {
       if (video) {
-        video.currentTime = 0;
+        if (video.currentTime === 0 || video.ended) {
+          video.currentTime = 0;
+        }
         if (audio) {
-          audio.currentTime = 0;
+          audio.currentTime = video.currentTime;
           audio.muted = isMuted;
         }
+        video.muted = reel.audioUrl ? true : isMuted;
+
         const playPromise = video.play();
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
               setIsPlaying(true);
+              setIsBuffering(false);
+              setVideoLoaded(true);
               if (audio) {
                 audio.play().catch(() => {});
               }
             })
             .catch((err) => {
-              console.log('Autoplay handled:', err);
-              setIsPlaying(false);
+              console.warn('Unmuted autoplay blocked by browser policy, falling back to muted:', err);
+              // Fallback to muted playback if browser policy prevents unmuted autoplay
+              video.muted = true;
+              video.play()
+                .then(() => {
+                  setIsPlaying(true);
+                  setIsBuffering(false);
+                  setVideoLoaded(true);
+                })
+                .catch((fallbackErr) => {
+                  console.warn('Muted autoplay fallback also prevented:', fallbackErr);
+                  setIsPlaying(false);
+                });
             });
         }
       } else if (audio) {
@@ -153,9 +170,10 @@ export const ReelItem: React.FC<ReelItemProps> = ({
         audio.pause();
       }
       setIsPlaying(false);
+      setIsBuffering(false);
       setZoomScale(1);
     }
-  }, [isActive, isMuted]);
+  }, [isActive, isMuted, reel.audioUrl]);
 
   // Handle Mute state change
   useEffect(() => {
@@ -465,10 +483,41 @@ export const ReelItem: React.FC<ReelItemProps> = ({
           onLoadedData={() => {
             setVideoLoaded(true);
             setIsBuffering(false);
+            if (isActive && videoRef.current && videoRef.current.paused) {
+              const p = videoRef.current.play();
+              if (p !== undefined) {
+                p.catch(() => {
+                  if (videoRef.current) {
+                    videoRef.current.muted = true;
+                    videoRef.current.play().catch(() => {});
+                  }
+                });
+              }
+            }
           }}
-          onWaiting={() => setIsBuffering(true)}
-          onPlaying={() => setIsBuffering(false)}
-          onCanPlay={() => setIsBuffering(false)}
+          onWaiting={() => {
+            if (isActive) setIsBuffering(true);
+          }}
+          onPlaying={() => {
+            setIsBuffering(false);
+            setVideoLoaded(true);
+            setIsPlaying(true);
+          }}
+          onCanPlay={() => {
+            setVideoLoaded(true);
+            setIsBuffering(false);
+            if (isActive && videoRef.current && videoRef.current.paused) {
+              const p = videoRef.current.play();
+              if (p !== undefined) {
+                p.catch(() => {
+                  if (videoRef.current) {
+                    videoRef.current.muted = true;
+                    videoRef.current.play().catch(() => {});
+                  }
+                });
+              }
+            }
+          }}
           onSeeked={() => setIsBuffering(false)}
           onTimeUpdate={() => {
             if (audioRef.current && videoRef.current && !audioRef.current.paused) {
