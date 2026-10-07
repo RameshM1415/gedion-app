@@ -8,6 +8,8 @@ interface BottomNavProps {
   onSelectTab: (tab: NavTab) => void;
   onHomeRefresh?: () => void;
   onHomeScrollToTop?: () => void;
+  onReelsRefresh?: () => void;
+  onReelsScrollToTop?: () => void;
   isRefreshing?: boolean;
   hasUnreadMessages?: boolean;
   hasUnreadNotifications?: boolean;
@@ -19,6 +21,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onSelectTab,
   onHomeRefresh,
   onHomeScrollToTop,
+  onReelsRefresh,
+  onReelsScrollToTop,
   isRefreshing = false,
   hasUnreadMessages = false,
   hasUnreadNotifications = false,
@@ -27,10 +31,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const { isDark } = useTheme();
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [isDoubleTapSpinning, setIsDoubleTapSpinning] = useState(false);
+  const [isReelsDoubleTapSpinning, setIsReelsDoubleTapSpinning] = useState(false);
 
   // Timing references for high-precision double-tap detection
   const lastHomeTapRef = useRef<number>(0);
   const singleTapTimerRef = useRef<number | null>(null);
+  const lastReelsTapRef = useRef<number>(0);
+  const singleReelsTapTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const updateAvatar = () => {
@@ -50,6 +57,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       window.removeEventListener('profile-updated', updateAvatar);
       if (singleTapTimerRef.current) {
         clearTimeout(singleTapTimerRef.current);
+      }
+      if (singleReelsTapTimerRef.current) {
+        clearTimeout(singleReelsTapTimerRef.current);
       }
     };
   }, []);
@@ -89,6 +99,46 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       } else {
         singleTapTimerRef.current = window.setTimeout(() => {
           onHomeScrollToTop?.();
+        }, DOUBLE_TAP_THRESHOLD);
+      }
+    }
+  };
+
+  const handleReelsClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const now = Date.now();
+    const DOUBLE_TAP_THRESHOLD = 320; // 320ms window for double tap
+
+    if (now - lastReelsTapRef.current < DOUBLE_TAP_THRESHOLD) {
+      if (singleReelsTapTimerRef.current) {
+        clearTimeout(singleReelsTapTimerRef.current);
+        singleReelsTapTimerRef.current = null;
+      }
+      lastReelsTapRef.current = 0;
+
+      // Haptic feedback
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate([25, 40, 25]);
+        } catch {}
+      }
+
+      // Trigger 360-degree rotation spin animation on clapperboard icon
+      setIsReelsDoubleTapSpinning(true);
+      setTimeout(() => setIsReelsDoubleTapSpinning(false), 900);
+
+      if (activeTab !== 'reels') {
+        onSelectTab('reels');
+      }
+      onReelsScrollToTop?.();
+      onReelsRefresh?.();
+    } else {
+      lastReelsTapRef.current = now;
+      if (activeTab !== 'reels') {
+        onSelectTab('reels');
+      } else {
+        singleReelsTapTimerRef.current = window.setTimeout(() => {
+          onReelsScrollToTop?.();
         }, DOUBLE_TAP_THRESHOLD);
       }
     }
@@ -149,22 +199,29 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         </div>
       </button>
 
-      {/* 2. Video / Reels (Clapperboard icon) - Opens full-screen vertical Reels */}
+      {/* 2. Video / Reels (Clapperboard icon) - Opens full-screen vertical Reels with Double-Tap Refresh */}
       <button
         type="button"
-        onClick={() => onSelectTab('reels')}
-        aria-label="Reels Player"
+        onClick={handleReelsClick}
+        title="Double-tap to refresh reels"
+        aria-label="Reels Player - Double tap to refresh"
         className="flex items-center justify-center p-2 transition-transform active:scale-90 cursor-pointer"
       >
-        <Clapperboard
-          size={24}
-          strokeWidth={isReelsTab ? 2.5 : 1.8}
-          className={
-            isReelsTab
-              ? 'fill-white text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.7)]'
-              : defaultIconColor
-          }
-        />
+        <div
+          className={`transition-transform duration-700 ease-out flex items-center justify-center ${
+            isReelsDoubleTapSpinning ? 'rotate-[360deg] scale-110' : ''
+          }`}
+        >
+          <Clapperboard
+            size={24}
+            strokeWidth={isReelsTab ? 2.5 : 1.8}
+            className={
+              isReelsTab
+                ? 'fill-white text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.7)]'
+                : defaultIconColor
+            }
+          />
+        </div>
       </button>
 
       {/* 3. Create / Upload (+) - Opens Create modal */}

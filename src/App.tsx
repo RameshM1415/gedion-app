@@ -221,6 +221,7 @@ export const App: React.FC = () => {
   // Refresh and Scroll-To-Top state
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [scrollToTopTrigger, setScrollToTopTrigger] = useState(0);
+  const [reelsRefreshTrigger, setReelsRefreshTrigger] = useState(0);
   const [showPublishToast, setShowPublishToast] = useState(false);
 
   // Lifted modal state for CommentDrawer, ShareSheet, and ReportModal
@@ -461,6 +462,18 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleReelsScrollToTop = useCallback(() => {
+    setScrollToTopTrigger((prev) => prev + 1);
+  }, []);
+
+  const handleReelsRefresh = useCallback(() => {
+    if (navTab !== 'reels') {
+      setNavTab('reels');
+    }
+    setReelsInitialReelId(null);
+    setReelsRefreshTrigger((prev) => prev + 1);
+  }, [navTab]);
+
   // Cloud Reels Handlers
   const handleReelsLoaded = useCallback((loadedReels: Reel[]) => {
     setReels((prev) => {
@@ -689,6 +702,7 @@ export const App: React.FC = () => {
                 onOpenLikes={(reelId) => setLikesReelId(reelId)}
                 onOpenProfile={(username) => setSelectedProfileUsername(username)}
                 scrollToTopTrigger={scrollToTopTrigger}
+                reelsRefreshTrigger={reelsRefreshTrigger}
                 onReelsLoaded={handleReelsLoaded}
                 onNewRealtimeReel={handleNewRealtimeReel}
                 currentUser={currentUser}
@@ -964,6 +978,8 @@ export const App: React.FC = () => {
           onSelectTab={handleSelectNavTab}
           onHomeRefresh={handleHomeRefresh}
           onHomeScrollToTop={handleHomeScrollToTop}
+          onReelsRefresh={handleReelsRefresh}
+          onReelsScrollToTop={handleReelsScrollToTop}
           isRefreshing={isRefreshing}
           hasUnreadMessages={false}
           hasUnreadNotifications={false}

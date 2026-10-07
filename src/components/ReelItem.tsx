@@ -51,6 +51,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
   const [followToast, setFollowToast] = useState<string | null>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [isLocalLikesOpen, setIsLocalLikesOpen] = useState(false);
 
   // Instant Optimistic UI state for Like status and Like counter
@@ -63,6 +64,24 @@ export const ReelItem: React.FC<ReelItemProps> = ({
     setOptimisticLiked(Boolean(reel.isLiked));
     setOptimisticLikesCount(typeof reel.likesCount === 'number' ? reel.likesCount : 0);
   }, [reel.id, reel.isLiked, reel.likesCount]);
+
+  // Reset media loading states when reel changes
+  useEffect(() => {
+    setVideoLoaded(false);
+    setIsBuffering(false);
+    setVideoError(false);
+  }, [reel.id, effectiveVideoUrl]);
+
+  // Clean up video playback on unmount to prevent audio overlap
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) {
+        try {
+          videoRef.current.pause();
+        } catch {}
+      }
+    };
+  }, []);
 
   // Zoom / Pan state for photo mode
   const [zoomScale, setZoomScale] = useState(1);
@@ -443,7 +462,14 @@ export const ReelItem: React.FC<ReelItemProps> = ({
           loop
           muted={reel.audioUrl ? true : isMuted}
           preload="auto"
-          onLoadedData={() => setVideoLoaded(true)}
+          onLoadedData={() => {
+            setVideoLoaded(true);
+            setIsBuffering(false);
+          }}
+          onWaiting={() => setIsBuffering(true)}
+          onPlaying={() => setIsBuffering(false)}
+          onCanPlay={() => setIsBuffering(false)}
+          onSeeked={() => setIsBuffering(false)}
           onTimeUpdate={() => {
             if (audioRef.current && videoRef.current && !audioRef.current.paused) {
               if (Math.abs(videoRef.current.currentTime - audioRef.current.currentTime) > 0.3) {
@@ -454,9 +480,19 @@ export const ReelItem: React.FC<ReelItemProps> = ({
           onError={() => {
             console.warn(`Video load fallback for ${reel.id}`);
             setVideoError(true);
+            setIsBuffering(false);
           }}
           className="h-full w-full object-cover"
         />
+      )}
+
+      {/* Subtle, minimal Instagram-style circular spinner if media is buffering */}
+      {isActive && isBuffering && !videoError && !isImage && (
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+          <div className="flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 shadow-lg">
+            <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+          </div>
+        </div>
       )}
 
       {/* Cinematic Top and Bottom Gradient Scrims */}

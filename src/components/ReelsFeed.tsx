@@ -16,6 +16,7 @@ interface ReelsFeedProps {
   onOpenReport?: (reelId: string) => void;
   onOpenOptions?: (reel: Reel) => void;
   scrollToTopTrigger?: number;
+  reelsRefreshTrigger?: number;
   onOpenCreateStory?: () => void;
   onReelsLoaded?: (loadedReels: Reel[]) => void;
   onNewRealtimeReel?: (newReel: Reel) => void;
@@ -37,6 +38,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   onOpenReport,
   onOpenOptions,
   scrollToTopTrigger,
+  reelsRefreshTrigger,
   onOpenCreateStory,
   onReelsLoaded,
   onNewRealtimeReel,
@@ -53,6 +55,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   const [feedReels, setFeedReels] = useState<Reel[]>(reels);
   const [isFetchingCloud, setIsFetchingCloud] = useState(true);
   const [fetchGlitch, setFetchGlitch] = useState(false);
+  const [isReelsRefreshing, setIsReelsRefreshing] = useState(false);
 
   // Jump to initialReelId on mount or when requested from home feed
   useEffect(() => {
@@ -190,6 +193,86 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
     }
   }, [scrollToTopTrigger, fetchReels, onStoriesVisibilityChange]);
 
+  // Instagram-Style Reels Refresh & Content Shuffling Logic (Double-Tap & Pull-to-Refresh)
+  const performReelsRefreshAndShuffle = useCallback(async () => {
+    const previousPlayingId = feedReels[activeIndex]?.id;
+    setIsReelsRefreshing(true);
+    setPullY(45); // Reveal the top circular refresh ring
+
+    // Immediately stop video playback & reset scroll container to top index 0
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+    setActiveIndex(0);
+    onStoriesVisibilityChange?.(true);
+
+    try {
+      // Re-query fresh reels directly from Supabase
+      const cloudReels = await fetchSupabaseReels();
+      setFetchGlitch(false);
+
+      let localCustom: Reel[] = [];
+      try {
+        const raw = localStorage.getItem('gedion_custom_reels');
+        if (raw) localCustom = JSON.parse(raw);
+      } catch {}
+
+      // Combine cloud reels, custom creator reels, and existing pool
+      const map = new Map<string, Reel>();
+      for (const r of [...localCustom, ...cloudReels, ...feedReels]) {
+        if (r && r.id && !map.has(r.id)) {
+          map.set(r.id, r);
+        }
+      }
+      const pool = Array.from(map.values());
+
+      if (pool.length > 0) {
+        // Fisher-Yates shuffle to randomize order every single time
+        const shuffled = [...pool];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        // CRITICAL: The video/post that was showing before refresh must NOT remain at the top;
+        // fresh/different content must appear at the top!
+        if (previousPlayingId && shuffled[0].id === previousPlayingId && shuffled.length > 1) {
+          const swapIdx = shuffled.findIndex((r, idx) => idx > 0 && r.id !== previousPlayingId);
+          if (swapIdx > 0) {
+            [shuffled[0], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[0]];
+          } else {
+            const target = 1 + Math.floor(Math.random() * (shuffled.length - 1));
+            [shuffled[0], shuffled[target]] = [shuffled[target], shuffled[0]];
+          }
+        }
+
+        setFeedReels(shuffled);
+        onReelsLoaded?.(shuffled);
+      }
+    } catch (err: any) {
+      console.warn('Network exception while refreshing reels:', err);
+      setFetchGlitch(true);
+    } finally {
+      // Smoothly collapse spinner and ensure clean 0ms autoplay switch
+      setTimeout(() => {
+        setIsReelsRefreshing(false);
+        setIsPullRefreshing(false);
+        setPullY(0);
+        if (containerRef.current) {
+          containerRef.current.scrollTop = 0;
+        }
+        setActiveIndex(0);
+      }, 700);
+    }
+  }, [activeIndex, feedReels, onReelsLoaded, onStoriesVisibilityChange]);
+
+  // Trigger double-tap refresh and shuffle when reelsRefreshTrigger changes
+  useEffect(() => {
+    if (reelsRefreshTrigger !== undefined && reelsRefreshTrigger > 0) {
+      performReelsRefreshAndShuffle();
+    }
+  }, [reelsRefreshTrigger, performReelsRefreshAndShuffle]);
+
   const handleScroll = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -276,14 +359,9 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   };
 
   const handleTouchEnd = async () => {
-    if (pullY > 40 && !isPullRefreshing) {
+    if (pullY > 40 && !isPullRefreshing && !isReelsRefreshing) {
       setIsPullRefreshing(true);
-      setPullY(45);
-      await fetchReels(true);
-      setTimeout(() => {
-        setIsPullRefreshing(false);
-        setPullY(0);
-      }, 500);
+      performReelsRefreshAndShuffle();
     } else {
       setPullY(0);
     }
@@ -297,22 +375,22 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
       onTouchEnd={handleTouchEnd}
       className="relative h-full w-full overflow-hidden bg-[#000000] select-none"
     >
-      {/* Pull-to-refresh circular ring spinner (Sub-header level) */}
-      {(pullY > 0 || isPullRefreshing) && (
+      {/* Pull-to-refresh & Double-Tap circular ring spinner (Sub-header level) */}
+      {(pullY > 0 || isPullRefreshing || isReelsRefreshing) && (
         <div
           style={{
-            height: `${pullY}px`,
-            opacity: pullY > 5 || isPullRefreshing ? 1 : 0,
+            height: `${pullY > 0 ? pullY : 50}px`,
+            opacity: pullY > 5 || isPullRefreshing || isReelsRefreshing ? 1 : 0,
           }}
           className="absolute top-14 inset-x-0 z-40 flex items-center justify-center pointer-events-none transition-all duration-200"
         >
           <div className="flex items-center justify-center p-2 rounded-full bg-black/85 border border-zinc-800 shadow-xl backdrop-blur-md">
             <div
               className={`w-5 h-5 rounded-full border-2 border-zinc-700/60 border-t-[#0095f6] border-r-[#0095f6] ${
-                isPullRefreshing ? 'animate-spin' : ''
+                isPullRefreshing || isReelsRefreshing ? 'animate-spin' : ''
               }`}
               style={{
-                transform: isPullRefreshing ? undefined : `rotate(${pullY * 6}deg)`,
+                transform: isPullRefreshing || isReelsRefreshing ? undefined : `rotate(${pullY * 6}deg)`,
               }}
             />
           </div>
@@ -382,7 +460,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
             <div key={reel.id} className="relative h-full w-full snap-start-always">
               <ReelItem
                 reel={reel}
-                isActive={index === activeIndex}
+                isActive={!isReelsRefreshing && !isPullRefreshing && index === activeIndex}
                 isMuted={isMuted}
                 onToggleMute={onToggleMute}
                 onUpdateReel={handleLocalUpdateReel}
