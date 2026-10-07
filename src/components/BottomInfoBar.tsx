@@ -23,7 +23,7 @@ export const BottomInfoBar: React.FC<BottomInfoBarProps> = ({
   };
 
   return (
-    <div className="absolute left-0 bottom-14 z-20 w-[calc(100%-72px)] p-3.5 flex flex-col gap-2 pointer-events-auto select-none">
+    <div className="absolute left-0 bottom-3 z-20 w-[calc(100%-72px)] px-3.5 pb-1.5 pt-1 flex flex-col gap-2 pointer-events-auto select-none">
       {/* Badge (if any, e.g. Trending, Viral) */}
       {reel.badgeText && (
         <div className="flex items-center gap-1.5 w-fit rounded-full bg-white/10 px-2.5 py-0.5 backdrop-blur-md border border-white/15 text-[10px] font-semibold text-white/90">

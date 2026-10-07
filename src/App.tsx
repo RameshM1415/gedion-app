@@ -686,9 +686,9 @@ export const App: React.FC = () => {
             />
           </div>
 
-          {/* 2. REELS TAB (▶️): Full-bleed, edge-to-edge vertical Reels player */}
+          {/* 2. REELS TAB (▶️): Full-bleed vertical Reels player cleanly stopping above the bottom navigation bar */}
           {navTab === 'reels' && (
-            <div className="relative h-full w-full overflow-hidden bg-black text-white">
+            <div className="relative h-[calc(100%-76px)] w-full overflow-hidden bg-[#000000] text-white">
               <ReelsFeed
                 reels={displayedReels}
                 isMuted={isMuted}

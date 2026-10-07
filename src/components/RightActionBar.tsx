@@ -47,7 +47,7 @@ export const RightActionBar: React.FC<RightActionBarProps> = ({
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
-      className="absolute right-2.5 bottom-16 z-50 pointer-events-auto flex flex-col items-center gap-3 pb-1"
+      className="absolute right-2.5 bottom-3.5 z-50 pointer-events-auto flex flex-col items-center gap-3 pb-1"
     >
       {/* 1. Like (Heart) Button */}
       <div className="relative z-50 pointer-events-auto flex flex-col items-center">

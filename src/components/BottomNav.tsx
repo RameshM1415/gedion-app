@@ -161,12 +161,17 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const isReelsTab = activeTab === 'reels';
   const isSearchActive = activeTab === 'explore' || (activeTab as string) === 'search';
 
-  // Dynamic bar background: solid dark/black on Reels tab, standard theme on other tabs
+  // Dynamic bar background: solid pure black (#000000) on Reels tab, standard theme on other tabs
   const barThemeClasses = isReelsTab
-    ? 'bg-black/95 backdrop-blur-md border-white/10 text-white shadow-2xl'
+    ? 'bg-[#000000] border-t border-zinc-900/90 text-white shadow-2xl'
     : isDark
     ? 'bg-black border-[#262626] text-white'
     : 'bg-white border-[#efefef] text-black';
+
+  // Elevated height and extended bottom padding in Reels tab (like native Instagram)
+  const barHeightClasses = isReelsTab
+    ? 'h-[76px] pb-4 pt-1'
+    : 'h-[50px]';
 
   const defaultIconColor = isReelsTab
     ? 'text-white/70 hover:text-white'
@@ -176,7 +181,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <nav
-      className={`fixed bottom-0 inset-x-0 z-40 max-w-[440px] mx-auto h-[50px] border-t px-5 flex items-center justify-between select-none transition-colors duration-300 ${barThemeClasses}`}
+      className={`fixed bottom-0 inset-x-0 z-40 max-w-[440px] mx-auto border-t px-5 flex items-center justify-between select-none transition-all duration-300 ${barHeightClasses} ${barThemeClasses}`}
     >
       {/* 1. Home (🏠) with Double-Tap Refresh & Spin Animation */}
       <button
