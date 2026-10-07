@@ -88,7 +88,50 @@ const InstagramReelsIcon: React.FC<{ isActive: boolean; className?: string }> = 
   );
 };
 
-// 3. Direct / Messages Paper Plane Icon (Solid filled when active, crisp 2px outlined when inactive)
+// 3. Create / Plus Icon (Solid filled rounded square with cut-out plus when active, crisp 2px outlined square with plus when inactive)
+const InstagramCreateIcon: React.FC<{ isActive: boolean; className?: string }> = ({
+  isActive,
+  className = '',
+}) => {
+  if (isActive) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        width="24"
+        height="24"
+        fill="currentColor"
+        className={className}
+        aria-hidden="true"
+      >
+        <path
+          fillRule="evenodd"
+          d="M2 7a5 5 0 0 1 5-5h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7Zm11 4h3.5a1 1 0 1 0 0-2H13V5.5a1 1 0 1 0-2 0V9H7.5a1 1 0 0 0 0 2H11v3.5a1 1 0 1 0 2 0V11Z"
+          clipRule="evenodd"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect x="2.5" y="2.5" width="19" height="19" rx="5" />
+      <line x1="12" y1="7.5" x2="12" y2="16.5" />
+      <line x1="7.5" y1="12" x2="16.5" y2="12" />
+    </svg>
+  );
+};
+
+// Direct / Messages Paper Plane Icon (Used in header and DMs)
 const InstagramDirectIcon: React.FC<{ isActive: boolean; className?: string }> = ({
   isActive,
   className = '',
@@ -440,26 +483,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         </div>
       </button>
 
-      {/* 3. Direct / Messages (Paper plane) with Vivid Red Notification Badge Dot */}
+      {/* 3. Create / Upload (+) (Square Plus Icon) */}
       <button
         type="button"
-        onClick={() => onSelectTab('messages')}
-        title="Direct Messages"
-        aria-label="Direct Messages"
+        onClick={() => onSelectTab('create')}
+        title="Create Post or Reel"
+        aria-label="Create Post or Reel"
         className="relative flex items-center justify-center p-2 transition-transform duration-150 ease-out active:scale-90 cursor-pointer"
       >
-        <InstagramDirectIcon
-          isActive={activeTab === 'messages'}
-          className={`transition-colors duration-150 ${getIconColor(activeTab === 'messages')}`}
+        <InstagramCreateIcon
+          isActive={activeTab === 'create'}
+          className={`transition-colors duration-150 ${getIconColor(activeTab === 'create')}`}
         />
-        {/* Vivid red notification dot in the top-right corner */}
-        <span className="absolute top-1.5 right-1.5 flex h-2 w-2 pointer-events-none">
-          <span
-            className={`relative inline-flex rounded-full h-2 w-2 bg-[#ff3040] shadow-sm ${
-              isReelsTab || isDark ? 'ring-1.5 ring-black' : 'ring-1.5 ring-white'
-            }`}
-          />
-        </span>
       </button>
 
       {/* 4. Search & Explore (🔍) */}

@@ -22,6 +22,7 @@ import { AuthModal } from './components/AuthModal';
 import { OnboardingVideoModal } from './components/OnboardingVideoModal';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { VideoUploadModal } from './components/VideoUploadModal';
+import { CreatePostModal } from './components/CreatePostModal';
 import { supabase, fetchSupabaseReels, deleteReelFromSupabase, updateReelLikesInSupabase } from './utils/supabaseClient';
 import { InstagramFeed } from './components/InstagramFeed';
 import { ReelsHeader } from './components/ReelsHeader';
@@ -368,12 +369,7 @@ export const App: React.FC = () => {
 
   const handleSelectNavTab = (tab: NavTab) => {
     if (tab === 'create') {
-      if (!currentUser) {
-        setAuthPromptMessage('Sign in to broadcast your reels to GediOn!');
-        setIsAuthModalOpen(true);
-        return;
-      }
-      setCreateMode('REEL');
+      setCreateMode('POST');
     }
     setCommentReelId(null);
     setShareReelId(null);
@@ -785,9 +781,9 @@ export const App: React.FC = () => {
             />
           )}
 
-          {/* 4. CREATE / RECORD */}
+          {/* 4. CREATE / UPLOAD PHOTO OR VIDEO */}
           {navTab === 'create' && (
-            <VideoUploadModal
+            <CreatePostModal
               isOpen={navTab === 'create'}
               onClose={() => setNavTab('home')}
               onPublish={handlePublishReel}
@@ -822,12 +818,6 @@ export const App: React.FC = () => {
               onClose={() => setNavTab('home')}
               reels={reels}
               onOpenCreateReel={() => {
-                if (!currentUser) {
-                  setAuthPromptMessage('Sign in to broadcast your reels to GediOn!');
-                  setIsAuthModalOpen(true);
-                  return;
-                }
-                setCreateMode('REEL');
                 setNavTab('create');
               }}
               onEditingChange={setIsEditProfileOpen}

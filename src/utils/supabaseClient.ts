@@ -134,6 +134,66 @@ export function uploadVideoToCloudinaryUnsigned(
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+/**
+ * Direct Upload to Supabase Storage ('reels' or 'posts' bucket).
+ * Uploads media file and returns the public accessible URL.
+ */
+export async function uploadMediaToSupabaseStorage(
+  file: File | Blob,
+  bucket: string = 'reels',
+  onProgress?: (percent: number) => void
+): Promise<string> {
+  const mime = file.type || '';
+  let ext = 'jpg';
+  if (mime.includes('video/mp4')) ext = 'mp4';
+  else if (mime.includes('video/webm')) ext = 'webm';
+  else if (mime.includes('video/quicktime')) ext = 'mov';
+  else if (mime.includes('image/png')) ext = 'png';
+  else if (mime.includes('image/webp')) ext = 'webp';
+  else if (mime.includes('image/jpeg')) ext = 'jpg';
+  else if (mime.includes('image/gif')) ext = 'gif';
+  else if ('name' in file && typeof (file as File).name === 'string') {
+    const parts = (file as File).name.split('.');
+    if (parts.length > 1) ext = parts.pop() || ext;
+  }
+
+  const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
+  const filePath = `public/${fileName}`;
+
+  onProgress?.(30);
+
+  // Attempt upload to target bucket (e.g. 'reels' or 'posts')
+  let { data, error } = await supabase.storage.from(bucket).upload(filePath, file, {
+    contentType: mime || undefined,
+    upsert: true,
+  });
+
+  // If primary bucket failed and wasn't 'reels', fallback to 'reels' bucket
+  if (error && bucket !== 'reels') {
+    const retry = await supabase.storage.from('reels').upload(filePath, file, {
+      contentType: mime || undefined,
+      upsert: true,
+    });
+    data = retry.data;
+    error = retry.error;
+    bucket = 'reels';
+  }
+
+  if (error || !data) {
+    throw new Error(error?.message || 'Failed to upload media to Supabase Storage');
+  }
+
+  onProgress?.(85);
+
+  const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
+  if (!publicUrlData || !publicUrlData.publicUrl) {
+    throw new Error('Failed to retrieve public URL from Supabase Storage');
+  }
+
+  onProgress?.(100);
+  return publicUrlData.publicUrl;
+}
+
 export interface SupabaseReelRow {
   id: string | number;
   user_id?: string | null;
