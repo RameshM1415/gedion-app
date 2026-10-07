@@ -1046,6 +1046,10 @@ export const App: React.FC = () => {
           setSelectedProfileUsername(null);
           handleOpenReelsFromHome(reelId);
         }}
+        onRequireAuth={(prompt) => {
+          setAuthPromptMessage(prompt);
+          setIsAuthModalOpen(true);
+        }}
       />
     </div>
   );

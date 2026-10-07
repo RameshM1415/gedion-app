@@ -23,6 +23,8 @@ import {
   searchSupabaseUsers,
   SearchedUser,
 } from '../utils/supabaseClient';
+import { followUser, unfollowUser } from '../utils/followersService';
+import { getStoredAuth } from '../utils/authStorage';
 import { useTheme } from '../context/ThemeContext';
 
 export interface ExploreViewProps {
@@ -172,13 +174,39 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
   const handleToggleFollowUser = (e: React.MouseEvent, username: string) => {
     e.stopPropagation();
+    const currentUser = getStoredAuth();
+    const cleanTarget = username.toLowerCase().replace(/^@/, '');
+
     setFollowedUsernames((prev) => {
       const next = new Set(prev);
-      if (next.has(username)) {
-        next.delete(username);
-      } else {
+      const isNowFollowing = !next.has(username);
+
+      if (isNowFollowing) {
         next.add(username);
+        if (currentUser) {
+          followUser(
+            {
+              id: currentUser.id,
+              username: currentUser.username,
+              displayName: currentUser.displayName,
+              avatar: currentUser.avatar,
+            },
+            {
+              id: `usr_${cleanTarget}`,
+              username: cleanTarget,
+            }
+          ).catch(() => {});
+        }
+      } else {
+        next.delete(username);
+        if (currentUser) {
+          unfollowUser(
+            { id: currentUser.id, username: currentUser.username },
+            { id: `usr_${cleanTarget}`, username: cleanTarget }
+          ).catch(() => {});
+        }
       }
+
       try {
         localStorage.setItem('gedion_followed_users_v1', JSON.stringify(Array.from(next)));
       } catch {}

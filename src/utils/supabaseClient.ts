@@ -565,7 +565,10 @@ export async function fetchSupabaseProfile(
 }
 
 /**
- * Fetch real follower, following, and total likes counts from Supabase (defaults to 0)
+ * Fetch real follower, following, and total likes counts from Supabase (defaults to real 0)
+ * Query followers table:
+ * Followers Count: SELECT count(*) FROM followers WHERE following_id = target_user_id
+ * Following Count: SELECT count(*) FROM followers WHERE follower_id = target_user_id
  */
 export async function fetchUserMetricsFromSupabase(
   userId?: string,
@@ -582,45 +585,77 @@ export async function fetchUserMetricsFromSupabase(
   try {
     const cleanUser = String(username || '').toLowerCase().replace(/^@/, '');
 
-    const [followersRes, followingRes, reelsRes, postsRes] = await Promise.all([
-      userId
-        ? supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', userId)
-        : Promise.resolve({ count: 0 }),
-      userId
-        ? supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId)
-        : Promise.resolve({ count: 0 }),
+    // 1. Query Supabase 'followers' table
+    const followerFilters: string[] = [];
+    if (userId) followerFilters.push(`following_id.eq.${userId}`);
+    if (cleanUser) followerFilters.push(`following_username.ilike.${cleanUser}`);
+
+    const followingFilters: string[] = [];
+    if (userId) followingFilters.push(`follower_id.eq.${userId}`);
+    if (cleanUser) followingFilters.push(`follower_username.ilike.${cleanUser}`);
+
+    const [followersRes, followingRes, reelsRes] = await Promise.all([
+      followerFilters.length > 0
+        ? supabase.from('followers').select('*', { count: 'exact', head: true }).or(followerFilters.join(','))
+        : Promise.resolve({ count: 0, error: null }),
+      followingFilters.length > 0
+        ? supabase.from('followers').select('*', { count: 'exact', head: true }).or(followingFilters.join(','))
+        : Promise.resolve({ count: 0, error: null }),
       supabase.from('reels').select('*'),
-      supabase.from('posts').select('*'),
     ]);
 
-    if (typeof (followersRes as any)?.count === 'number') {
+    if (!followersRes.error && typeof (followersRes as any)?.count === 'number') {
       followersCount = (followersRes as any).count;
+    } else {
+      // Check local synchronized follow store
+      try {
+        const raw = localStorage.getItem('gedion_supabase_followers_v1');
+        if (raw) {
+          const list: any[] = JSON.parse(raw);
+          followersCount = list.filter((r) => {
+            if (userId && r.following_id === userId) return true;
+            if (cleanUser && String(r.following_username || '').toLowerCase() === cleanUser) return true;
+            return false;
+          }).length;
+        }
+      } catch {}
     }
-    if (typeof (followingRes as any)?.count === 'number') {
+
+    if (!followingRes.error && typeof (followingRes as any)?.count === 'number') {
       followingCount = (followingRes as any).count;
+    } else {
+      // Check local synchronized follow store
+      try {
+        const raw = localStorage.getItem('gedion_supabase_followers_v1');
+        if (raw) {
+          const list: any[] = JSON.parse(raw);
+          followingCount = list.filter((r) => {
+            if (userId && r.follower_id === userId) return true;
+            if (cleanUser && String(r.follower_username || '').toLowerCase() === cleanUser) return true;
+            return false;
+          }).length;
+        }
+      } catch {}
     }
 
     const allRows: any[] = [];
     if (!reelsRes.error && Array.isArray(reelsRes.data)) {
       allRows.push(...reelsRes.data);
     }
-    if (!postsRes.error && Array.isArray(postsRes.data)) {
-      allRows.push(...postsRes.data);
-    }
 
-    // Match rows uploaded by this user
+    // Match rows uploaded by this user to compute total likes
     const matchedLikes = allRows
       .filter((row: any) => {
         if (userId && (row.user_id === userId || row.creatorId === userId)) return true;
         const cName = String(row.creator_name || '').toLowerCase().replace(/^@/, '');
-        if (cleanUser && (cName === cleanUser || cName === 'rameshrao034')) return true;
+        if (cleanUser && (cName === cleanUser || (cleanUser === 'rameshrao034' && cName === 'creator'))) return true;
         return false;
       })
       .reduce((sum, r: any) => sum + (Number(r.likes_count) || 0), 0);
 
     totalLikesCount = matchedLikes;
   } catch {
-    // Default to 0 if tables do not exist yet
+    // Return real 0 if table empty or not accessible
   }
 
   return { followersCount, followingCount, totalLikesCount };

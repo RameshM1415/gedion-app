@@ -6,6 +6,7 @@ import { CenterPulseIcon } from './CenterPulseIcon';
 import { FloatingHearts, FloatingHeartItem } from './FloatingHearts';
 import { LikesAndPlaysModal } from './LikesAndPlaysModal';
 import { supabase, updateReelLikesInSupabase } from '../utils/supabaseClient';
+import { followUser, unfollowUser } from '../utils/followersService';
 
 import { AuthUser } from '../utils/authStorage';
 
@@ -354,6 +355,11 @@ export const ReelItem: React.FC<ReelItemProps> = ({
   // 5. Creator Follow Toggle
   const handleToggleFollow = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!currentUser) {
+      onRequireAuth?.('Sign in to follow creators on GediOn!');
+      return;
+    }
+
     const nextFollowing = !reel.isFollowing;
 
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
@@ -371,8 +377,26 @@ export const ReelItem: React.FC<ReelItemProps> = ({
 
     if (nextFollowing) {
       setFollowToast(`Following @${reel.username}`);
+      followUser(
+        {
+          id: currentUser.id,
+          username: currentUser.username,
+          displayName: currentUser.displayName,
+          avatar: currentUser.avatar,
+        },
+        {
+          id: reel.creatorId || `usr_${reel.username}`,
+          username: reel.username,
+          displayName: reel.displayName || reel.username,
+          avatar: reel.avatar,
+        }
+      ).catch(() => {});
     } else {
       setFollowToast(`Unfollowed @${reel.username}`);
+      unfollowUser(
+        { id: currentUser.id, username: currentUser.username },
+        { id: reel.creatorId || `usr_${reel.username}`, username: reel.username }
+      ).catch(() => {});
     }
 
     setTimeout(() => {

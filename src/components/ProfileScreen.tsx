@@ -37,6 +37,7 @@ import { ShareProfileModal } from './ShareProfileModal';
 import { CreatorInsightsModal } from './CreatorInsightsModal';
 import { WalletScreen } from './WalletScreen';
 import { ReelOptionsMenu } from './ReelOptionsMenu';
+import { FollowersModal } from './FollowersModal';
 import { AuthUser, DEFAULT_AUTH_USER, getStoredAuth } from '../utils/authStorage';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -143,6 +144,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Clickable Followers / Following Modal state
+  const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
+  const [followersModalTab, setFollowersModalTab] = useState<'followers' | 'following'>('followers');
 
   // Dynamic Wallet Balance state (defaults strictly to 0)
   const [walletBalance, setWalletBalance] = useState<number>(0);
@@ -621,6 +626,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     };
   }, [profile.username, currentUser, loadCreatorReels]);
 
+  // Real-time listener for global follow status changes
+  useEffect(() => {
+    const handleFollowChange = () => {
+      const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
+      fetchUserMetricsFromSupabase(active?.id, active?.username || profile.username).then((metrics) => {
+        setFollowersCount(metrics.followersCount);
+        setFollowingCount(metrics.followingCount);
+        setTotalLikesCount(metrics.totalLikesCount);
+      });
+    };
+
+    window.addEventListener('gedion-follow-changed', handleFollowChange);
+    return () => {
+      window.removeEventListener('gedion-follow-changed', handleFollowChange);
+    };
+  }, [currentUser, profile.username]);
+
   // 3. Likes & Engagement Aggregation:
   // Calculate total LIKES counter on profile by summing the likes_count across all reels published by this user
   const dynamicLikesCount = useMemo(() => {
@@ -960,36 +982,61 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </a>
         )}
 
-        {/* Stats Row: 3 clean columns (Reels, Followers, Following) */}
+        {/* Stats Row: 3 clean columns (Reels, Followers, Following) - Clickable */}
         <div
           className={`grid grid-cols-3 w-full max-w-sm mt-4 py-2.5 px-2 rounded-xl border transition-colors ${
             isDark ? 'bg-zinc-950 border-[#262626]' : 'bg-zinc-50 border-[#efefef]'
           }`}
         >
-          <div className="flex flex-col items-center justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              const el = document.getElementById('profile-reels-grid');
+              el?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="flex flex-col items-center justify-center hover:opacity-80 active:scale-95 transition-all cursor-pointer"
+          >
             <span className="font-bold text-sm">
               {creatorReels.length}
             </span>
             <span className="text-[11px] text-zinc-500 mt-0.5">
               Reels
             </span>
-          </div>
-          <div className={`flex flex-col items-center justify-center border-x ${isDark ? 'border-zinc-800' : 'border-zinc-200'}`}>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setFollowersModalTab('followers');
+              setIsFollowersModalOpen(true);
+            }}
+            className={`flex flex-col items-center justify-center border-x hover:opacity-80 active:scale-95 transition-all cursor-pointer ${
+              isDark ? 'border-zinc-800' : 'border-zinc-200'
+            }`}
+          >
             <span className="font-bold text-sm">
               {followersCount.toLocaleString('en-IN')}
             </span>
             <span className="text-[11px] text-zinc-500 mt-0.5">
               Followers
             </span>
-          </div>
-          <div className="flex flex-col items-center justify-center">
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setFollowersModalTab('following');
+              setIsFollowersModalOpen(true);
+            }}
+            className="flex flex-col items-center justify-center hover:opacity-80 active:scale-95 transition-all cursor-pointer"
+          >
             <span className="font-bold text-sm">
               {followingCount.toLocaleString('en-IN')}
             </span>
             <span className="text-[11px] text-zinc-500 mt-0.5">
               Following
             </span>
-          </div>
+          </button>
         </div>
 
         {/* Action Buttons: "Edit Profile", "Share Profile", "Insights" */}
@@ -1130,7 +1177,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* Tab 1: "My Reels" - 3-column grid or Empty State */}
       {activeProfileTab === 'reels' ? (
-        <div className="mt-3 min-h-[220px]">
+        <div id="profile-reels-grid" className="mt-3 min-h-[220px]">
           {creatorReels.length > 0 ? (
             /* 3-Column Video Grid */
             <div className="grid grid-cols-3 gap-1">
@@ -1927,6 +1974,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Followers / Following Instagram Modal Sheet */}
+      <FollowersModal
+        isOpen={isFollowersModalOpen}
+        onClose={() => setIsFollowersModalOpen(false)}
+        targetUser={{
+          id: currentUser?.id,
+          username: profile.username,
+          displayName: profile.name,
+        }}
+        initialTab={followersModalTab}
+        currentUser={currentUser}
+        onOpenProfile={(u) => {
+          setIsFollowersModalOpen(false);
+        }}
+        onRequireAuth={onOpenAuthModal}
+      />
     </div>
   );
 };

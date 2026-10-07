@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -19,7 +19,16 @@ import { Reel } from '../types';
 import { AuthUser } from '../utils/authStorage';
 import { useTheme } from '../context/ThemeContext';
 import { formatCount } from '../utils/formatters';
-import { fetchSupabaseProfile, fetchUserMetricsFromSupabase } from '../utils/supabaseClient';
+import { fetchSupabaseProfile } from '../utils/supabaseClient';
+import {
+  fetchRealFollowersCount,
+  fetchRealFollowingCount,
+  fetchRealUserPostsCount,
+  checkIsUserFollowing,
+  followUser,
+  unfollowUser,
+} from '../utils/followersService';
+import { FollowersModal } from './FollowersModal';
 
 export interface UserProfileModalProps {
   isOpen: boolean;
@@ -29,6 +38,7 @@ export interface UserProfileModalProps {
   currentUser?: AuthUser | null;
   onOpenChatWithUser?: (username: string) => void;
   onOpenReel?: (reelId: string) => void;
+  onRequireAuth?: (prompt: string) => void;
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
@@ -39,6 +49,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   currentUser,
   onOpenChatWithUser,
   onOpenReel,
+  onRequireAuth,
 }) => {
   const { isDark } = useTheme();
 
@@ -70,26 +81,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       : '✨ Creating reels & sharing moments on GediOn'
   );
   const [website, setWebsite] = useState<string>('');
-  const [followersCount, setFollowersCount] = useState<number>(() => {
-    const base = creatorSampleReel?.likesCount ? Math.floor(creatorSampleReel.likesCount * 1.8) : 240;
-    return Math.max(base, 12);
-  });
-  const [followingCount, setFollowingCount] = useState<number>(185);
+  
+  // Real database-driven counts from Supabase (Strictly start at real 0, zero mock data)
+  const [followersCount, setFollowersCount] = useState<number>(0);
+  const [followingCount, setFollowingCount] = useState<number>(0);
+  const [postsCount, setPostsCount] = useState<number>(creatorReels.length);
 
-  // Follow State persisted to localStorage
-  const [isFollowing, setIsFollowing] = useState<boolean>(() => {
-    if (!username) return false;
-    try {
-      const stored = localStorage.getItem('gedion_followed_users_v1');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.includes(username.toLowerCase().replace(/^@/, ''))) {
-          return true;
-        }
-      }
-    } catch {}
-    return Boolean(creatorSampleReel?.isFollowing);
-  });
+  // Real follow status from Supabase
+  const [isFollowing, setIsFollowing] = useState<boolean>(false);
+  const [isFollowActionLoading, setIsFollowActionLoading] = useState<boolean>(false);
+
+  // Clickable Followers / Following Modal state
+  const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
+  const [followersModalTab, setFollowersModalTab] = useState<'followers' | 'following'>('followers');
 
   const [activeTab, setActiveTab] = useState<'reels' | 'tagged'>('reels');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -101,22 +105,42 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const touchStartYRef = useRef<number | null>(null);
   const isDraggingPullRef = useRef(false);
 
-  // Sync profile details from Supabase when modal opens
+  // Load real metrics and follow status from Supabase
+  const loadRealMetricsAndFollow = useCallback(async () => {
+    if (!username) return;
+    const clean = username.toLowerCase().replace(/^@/, '');
+
+    // 1. Query real posts count
+    const pCount = await fetchRealUserPostsCount(undefined, clean);
+    setPostsCount(Math.max(pCount, creatorReels.length));
+
+    // 2. Query real followers count
+    const fCount = await fetchRealFollowersCount(undefined, clean);
+    setFollowersCount(fCount);
+
+    // 3. Query real following count
+    const fgCount = await fetchRealFollowingCount(undefined, clean);
+    setFollowingCount(fgCount);
+
+    // 4. Check if current user already follows this profile
+    if (currentUser?.username) {
+      const isF = await checkIsUserFollowing(
+        currentUser.id,
+        currentUser.username,
+        undefined,
+        clean
+      );
+      setIsFollowing(isF);
+    } else {
+      setIsFollowing(false);
+    }
+  }, [username, currentUser, creatorReels.length]);
+
+  // Sync profile details and real Supabase counts when modal opens
   useEffect(() => {
     if (!isOpen || !username) return;
 
     const clean = username.toLowerCase().replace(/^@/, '');
-
-    // Check localStorage followed state
-    try {
-      const stored = localStorage.getItem('gedion_followed_users_v1');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setIsFollowing(parsed.includes(clean));
-        }
-      }
-    } catch {}
 
     // Set initial display name & avatar from sample reel
     if (creatorSampleReel) {
@@ -134,39 +158,84 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       }
     });
 
-    // Fetch cloud metrics
-    fetchUserMetricsFromSupabase(undefined, clean).then((metrics) => {
-      if (metrics.followersCount > 0) {
-        setFollowersCount(metrics.followersCount);
-      }
-      if (metrics.followingCount > 0) {
-        setFollowingCount(metrics.followingCount);
-      }
-    });
-  }, [isOpen, username, creatorSampleReel]);
+    // Query real Supabase counts & follow status
+    loadRealMetricsAndFollow();
+  }, [isOpen, username, creatorSampleReel, loadRealMetricsAndFollow]);
 
-  // Toggle Follow / Unfollow
-  const handleToggleFollow = () => {
+  // Listen for global real-time follow status events
+  useEffect(() => {
+    const handleFollowChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail || !username) return;
+      const clean = username.toLowerCase().replace(/^@/, '');
+      if (
+        detail.followingUsername?.toLowerCase() === clean ||
+        detail.followerUsername?.toLowerCase() === clean
+      ) {
+        loadRealMetricsAndFollow();
+      }
+    };
+
+    window.addEventListener('gedion-follow-changed', handleFollowChange);
+    return () => {
+      window.removeEventListener('gedion-follow-changed', handleFollowChange);
+    };
+  }, [username, loadRealMetricsAndFollow]);
+
+  // Fully Functional End-to-End Follow / Unfollow Handler
+  const handleToggleFollow = async () => {
     if (!username) return;
-    const clean = username.toLowerCase().replace(/^@/, '');
-    const next = !isFollowing;
-    setIsFollowing(next);
-    setFollowersCount((prev) => (next ? prev + 1 : Math.max(0, prev - 1)));
+
+    if (!currentUser) {
+      onRequireAuth?.('Sign in to follow creators on GediOn!');
+      return;
+    }
+
+    const cleanCurrent = currentUser.username.toLowerCase().replace(/^@/, '');
+    const cleanTarget = username.toLowerCase().replace(/^@/, '');
+    if (cleanCurrent === cleanTarget) return;
+
+    const nextFollowing = !isFollowing;
+
+    // 1. Immediate optimistic UI feedback without page refresh
+    setIsFollowing(nextFollowing);
+    setFollowersCount((prev) => (nextFollowing ? prev + 1 : Math.max(0, prev - 1)));
+    setIsFollowActionLoading(true);
 
     try {
-      const stored = localStorage.getItem('gedion_followed_users_v1');
-      let arr: string[] = stored ? JSON.parse(stored) : [];
-      if (!Array.isArray(arr)) arr = [];
-      if (next) {
-        if (!arr.includes(clean)) arr.push(clean);
+      if (nextFollowing) {
+        await followUser(
+          {
+            id: currentUser.id,
+            username: currentUser.username,
+            displayName: currentUser.displayName,
+            avatar: currentUser.avatar,
+          },
+          {
+            id: `usr_${cleanTarget}`,
+            username: cleanTarget,
+            displayName: displayName || cleanTarget,
+            avatar,
+          }
+        );
+        setToastMessage(`Following @${cleanTarget}`);
       } else {
-        arr = arr.filter((u) => u !== clean);
+        await unfollowUser(
+          { id: currentUser.id, username: currentUser.username },
+          { id: `usr_${cleanTarget}`, username: cleanTarget }
+        );
+        setToastMessage(`Unfollowed @${cleanTarget}`);
       }
-      localStorage.setItem('gedion_followed_users_v1', JSON.stringify(arr));
-    } catch {}
-
-    setToastMessage(next ? `Followed @${clean}` : `Unfollowed @${clean}`);
-    setTimeout(() => setToastMessage(null), 2200);
+    } catch (err) {
+      console.warn('Error in follow toggle:', err);
+      // Revert on failure
+      setIsFollowing(!nextFollowing);
+      setFollowersCount((prev) => (nextFollowing ? Math.max(0, prev - 1) : prev + 1));
+      setToastMessage('Could not update follow status');
+    } finally {
+      setIsFollowActionLoading(false);
+      setTimeout(() => setToastMessage(null), 2200);
+    }
   };
 
   const handleMessageUser = () => {
@@ -189,11 +258,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         if (profile.bio) setBio(profile.bio);
         if (profile.link) setWebsite(profile.link);
       }
-      const metrics = await fetchUserMetricsFromSupabase(undefined, clean);
-      if (metrics) {
-        if (metrics.followersCount > 0) setFollowersCount(metrics.followersCount);
-        if (metrics.followingCount > 0) setFollowingCount(metrics.followingCount);
-      }
+      await loadRealMetricsAndFollow();
       const elapsed = Date.now() - startTime;
       if (elapsed < 750) {
         await new Promise((r) => setTimeout(r, 750 - elapsed));
@@ -376,26 +441,49 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </div>
               </div>
 
-              {/* Stats Counters (Posts, Followers, Following) */}
+              {/* Stats Counters (Posts, Followers, Following) - Clickable */}
               <div className="flex-1 flex items-center justify-around text-center">
-                <div className="flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const gridEl = document.getElementById('user-profile-posts-grid');
+                    gridEl?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="flex flex-col items-center hover:opacity-80 active:scale-95 transition-all cursor-pointer"
+                >
                   <span className="text-base font-extrabold tracking-tight">
-                    {creatorReels.length}
+                    {postsCount}
                   </span>
                   <span className="text-xs text-zinc-400 font-medium">Posts</span>
-                </div>
-                <div className="flex flex-col items-center">
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFollowersModalTab('followers');
+                    setIsFollowersModalOpen(true);
+                  }}
+                  className="flex flex-col items-center hover:opacity-80 active:scale-95 transition-all cursor-pointer"
+                >
                   <span className="text-base font-extrabold tracking-tight">
                     {formatCount(followersCount)}
                   </span>
                   <span className="text-xs text-zinc-400 font-medium">Followers</span>
-                </div>
-                <div className="flex flex-col items-center">
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFollowersModalTab('following');
+                    setIsFollowersModalOpen(true);
+                  }}
+                  className="flex flex-col items-center hover:opacity-80 active:scale-95 transition-all cursor-pointer"
+                >
                   <span className="text-base font-extrabold tracking-tight">
                     {formatCount(followingCount)}
                   </span>
                   <span className="text-xs text-zinc-400 font-medium">Following</span>
-                </div>
+                </button>
               </div>
             </div>
 
@@ -484,7 +572,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           {/* 3-Column Posts / Reels Grid */}
           {creatorReels.length > 0 ? (
-            <div className="grid grid-cols-3 gap-0.5 mt-0.5">
+            <div id="user-profile-posts-grid" className="grid grid-cols-3 gap-0.5 mt-0.5">
               {creatorReels.map((item) => (
                 <div
                   key={item.id}
@@ -526,7 +614,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
           ) : (
             /* Empty State */
-            <div className="flex flex-col items-center justify-center p-12 text-center">
+            <div id="user-profile-posts-grid" className="flex flex-col items-center justify-center p-12 text-center">
               <div className="w-14 h-14 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 mb-3">
                 <Film size={24} />
               </div>
@@ -537,6 +625,23 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* Followers / Following Instagram Modal Sheet */}
+        <FollowersModal
+          isOpen={isFollowersModalOpen}
+          onClose={() => setIsFollowersModalOpen(false)}
+          targetUser={{
+            id: `usr_${username}`,
+            username,
+            displayName,
+          }}
+          initialTab={followersModalTab}
+          currentUser={currentUser}
+          onOpenProfile={(u) => {
+            setIsFollowersModalOpen(false);
+          }}
+          onRequireAuth={onRequireAuth}
+        />
 
         {/* Toast Notification */}
         {toastMessage && (
