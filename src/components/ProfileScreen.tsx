@@ -23,7 +23,6 @@ import {
   Tv,
   Wallet,
   ArrowUpRight,
-  LogOut,
   LogIn,
   MoreVertical,
   Trash2,
@@ -1119,18 +1118,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </button>
         </div>
 
-        {/* Authentication Action: Sign Out button when logged in, or Log In button if guest */}
-        <div className="w-full max-w-sm mt-3">
-          {currentUser ? (
-            <button
-              type="button"
-              onClick={onSignOut}
-              className="w-full py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/15 active:scale-98 text-xs font-semibold text-rose-500 border border-rose-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <LogOut size={14} />
-              <span>Log Out (@{profile.username})</span>
-            </button>
-          ) : (
+        {/* Guest Authentication Action if not logged in */}
+        {!currentUser && (
+          <div className="w-full max-w-sm mt-3">
             <button
               type="button"
               onClick={() => onOpenAuthModal?.('Sign in to access your creator profile & broadcast reels!')}
@@ -1139,8 +1129,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <LogIn size={15} />
               <span>Log In to GediOn</span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* 2. Creator Video Grid & Tabs: Tab 1 "Reels", Tab 2 "Saved" */}
