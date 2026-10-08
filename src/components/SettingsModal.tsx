@@ -440,9 +440,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <LogOut size={16} />
             <span>Log Out of GediOn</span>
           </button>
-          <p className="text-center text-[10px] text-zinc-500 mt-3 font-mono">
-            GediOn Instagram Edition v2.0 • Supabase & Cloudinary Active
-          </p>
         </div>
       </div>
 

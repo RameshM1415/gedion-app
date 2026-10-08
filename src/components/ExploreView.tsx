@@ -109,7 +109,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         .finally(() => {
           setIsSearchingUsers(false);
         });
-    }, 180);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);

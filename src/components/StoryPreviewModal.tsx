@@ -139,8 +139,16 @@ export const StoryPreviewModal: React.FC<StoryPreviewModalProps> = ({
         transition={{ duration: 0.22, ease: 'easeOut' }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 select-none"
       >
-        {/* Main 9:16 Story Frame */}
-        <div
+        {/* Main 9:16 Story Frame with Swipe Down to Exit */}
+        <motion.div
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.5 }}
+          onDragEnd={(_, info) => {
+            if (info.offset.y > 80 || info.velocity.y > 300) {
+              onClose();
+            }
+          }}
           className="relative flex flex-col h-full w-full max-w-[440px] md:h-[94vh] md:max-h-[890px] md:rounded-[32px] overflow-hidden bg-neutral-950 shadow-2xl md:border md:border-white/15"
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
@@ -353,7 +361,7 @@ export const StoryPreviewModal: React.FC<StoryPreviewModalProps> = ({
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </motion.div>
       </motion.div>
     </AnimatePresence>
   );

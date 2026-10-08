@@ -49,6 +49,7 @@ import {
   fetchUserPostsFromSupabase,
   deleteReelFromSupabase,
   updateReelDetailsInSupabase,
+  toggleSupabaseSavedPost,
   UserProfileData,
 } from '../utils/supabaseClient';
 
@@ -792,6 +793,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   // Filter saved reels
   const savedReels = reels.filter((r) => r.isBookmarked || savedReelIds.includes(r.id));
 
+  // Toggle Save / Unsave bookmark with instant Supabase sync and UI update
+  const handleToggleBookmarkSaved = async (reelId: string) => {
+    const isCurrentlySaved = savedReelIds.includes(reelId);
+    const nextSavedIds = isCurrentlySaved
+      ? savedReelIds.filter((id) => id !== reelId)
+      : [...savedReelIds, reelId];
+
+    setSavedReelIds(nextSavedIds);
+    try {
+      localStorage.setItem(SAVED_REELS_STORAGE_KEY, JSON.stringify(nextSavedIds));
+    } catch {}
+
+    const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
+    toggleSupabaseSavedPost(active?.id, reelId, !isCurrentlySaved).catch(() => {});
+
+    showToast(isCurrentlySaved ? 'Removed from saved posts' : 'Saved to profile');
+  };
+
   // 2. Tap to open full-screen playback
   const handleTileClick = (reel: Reel) => {
     if (onOpenReel) {
@@ -1050,8 +1069,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             onClick={handleOpenEditModal}
             className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-semibold active:scale-95 transition-all cursor-pointer ${
               isDark
-                ? 'bg-zinc-900 hover:bg-zinc-800 border-[#262626] text-white'
-                : 'bg-zinc-100 hover:bg-zinc-200 border-[#efefef] text-black'
+                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-900'
             }`}
           >
             <span>Edit profile</span>
@@ -1061,8 +1080,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             onClick={() => setIsShareModalOpen(true)}
             className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-semibold active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               isDark
-                ? 'bg-zinc-900 hover:bg-zinc-800 border-[#262626] text-white'
-                : 'bg-zinc-100 hover:bg-zinc-200 border-[#efefef] text-black'
+                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-900'
             }`}
           >
             <Share2 size={13} />
@@ -1073,8 +1092,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             onClick={() => setIsInsightsOpen(true)}
             className={`py-1.5 px-3 rounded-lg border text-xs font-semibold active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
               isDark
-                ? 'bg-zinc-900 hover:bg-zinc-800 border-[#262626] text-white'
-                : 'bg-zinc-100 hover:bg-zinc-200 border-[#efefef] text-black'
+                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-900'
             }`}
             title="Creator Insights & Analytics"
           >
@@ -1111,9 +1130,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-1 text-xs font-semibold text-zinc-400">
-              <span>View</span>
-              <ArrowUpRight size={14} />
+            <div className={`flex items-center gap-1 text-xs font-semibold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+              <span>View ↗</span>
             </div>
           </button>
         </div>
@@ -1285,15 +1303,29 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       isDark ? 'bg-zinc-900' : 'bg-zinc-100'
                     }`}
                   >
-                    <img
-                      src={reel.poster || reel.videoUrl}
-                      alt={reel.caption}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
+                    {reel.poster ? (
+                      <img
+                        src={reel.poster}
+                        alt={reel.caption}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : reel.videoUrl ? (
+                      <video
+                        src={`${reel.videoUrl}#t=0.1`}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        muted
+                        playsInline
+                        preload="metadata"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center bg-zinc-900 text-white">
+                        <Bookmark size={20} className="text-zinc-500" />
+                      </div>
+                    )}
 
                     {/* Bookmark badge top-right */}
                     <div className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md">
-                      <Bookmark size={11} className="fill-white text-white" />
+                      <Bookmark size={11} className="fill-amber-400 text-amber-400" />
                     </div>
 
                     {isVideo && (
@@ -1305,7 +1337,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1.5">
                       <span className="text-[10px] font-bold text-white flex items-center gap-1 drop-shadow-md">
                         <Heart size={10} className="fill-white text-white" />
-                        {reel.viewsCount || '0'}
+                        {reel.likesCount || reel.viewsCount || '0'}
                       </span>
                     </div>
                   </div>
@@ -1354,10 +1386,28 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </button>
 
               <div className="flex items-center gap-2">
+                {/* Active Bookmark / Unsave Button */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleBookmarkSaved(playbackReel.id)}
+                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-amber-400 border border-white/10 hover:border-white/30 hover:bg-black/80 transition-all active:scale-90 cursor-pointer"
+                  aria-label="Bookmark"
+                  title={savedReelIds.includes(playbackReel.id) ? 'Unsave' : 'Save'}
+                >
+                  <Bookmark
+                    size={16}
+                    className={
+                      savedReelIds.includes(playbackReel.id)
+                        ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]'
+                        : 'text-white'
+                    }
+                  />
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setPlaybackMuted((prev) => !prev)}
-                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:bg-black/80"
+                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:bg-black/80 cursor-pointer"
                   aria-label={playbackMuted ? 'Unmute' : 'Mute'}
                 >
                   {playbackMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
@@ -1365,7 +1415,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => handleOpenReelOptions(playbackReel)}
-                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:border-white/30 hover:bg-black/80"
+                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:border-white/30 hover:bg-black/80 cursor-pointer"
                   aria-label="Reel options"
                 >
                   <MoreVertical size={16} />
@@ -1373,7 +1423,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => setPlaybackReel(null)}
-                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:bg-black/80"
+                  className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/10 hover:bg-black/80 cursor-pointer"
                   aria-label="Close playback"
                 >
                   <X size={16} />
@@ -1568,12 +1618,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       className="w-full bg-transparent text-xs text-white placeholder-white/30 focus:outline-none"
                     />
                   </div>
-                </div>
-
-                {/* Cloud sync indicator info */}
-                <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-400/20 text-[11px] text-cyan-200/90 flex items-center gap-2">
-                  <Sparkles size={14} className="text-cyan-400 shrink-0" />
-                  <span>Your profile updates sync securely with Supabase cloud database.</span>
                 </div>
               </div>
             </motion.div>

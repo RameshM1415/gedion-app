@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Reel, CommentItem } from '../types';
+import { Reel, CommentItem, StoryItem } from '../types';
 
 export const SUPABASE_URL = "https://aifktpstbquzfloleleb.supabase.co";
 export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpZmt0cHN0YnF1emZsb2xlbGViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzA0NTksImV4cCI6MjA5NzIwNjQ1OX0.DVlA_himyLQRi1piTDjQYRnhAo766AsG7MVTP0txQyc";
@@ -1013,6 +1013,112 @@ export async function sendSupabaseMessage(msg: {
   } catch (err) {
     console.warn('Exception sending message to Supabase:', err);
     return false;
+  }
+}
+
+/**
+ * Toggle Save / Unsave post in Supabase 'saved_posts' table
+ */
+export async function toggleSupabaseSavedPost(
+  userId: string,
+  postId: string,
+  isSaved: boolean
+): Promise<boolean> {
+  if (!postId) return false;
+  try {
+    if (isSaved) {
+      await supabase.from('saved_posts').upsert(
+        {
+          user_id: userId || 'anonymous',
+          post_id: postId,
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,post_id' }
+      );
+    } else {
+      await supabase
+        .from('saved_posts')
+        .delete()
+        .eq('post_id', postId);
+      if (userId) {
+        await supabase
+          .from('saved_posts')
+          .delete()
+          .match({ user_id: userId, post_id: postId });
+      }
+    }
+    return true;
+  } catch (err) {
+    console.warn('Supabase saved_posts toggle error:', err);
+    return false;
+  }
+}
+
+/**
+ * Insert active story into Supabase 'stories' table with 24-hour expiration
+ */
+export async function insertSupabaseStory(story: {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatar: string;
+  mediaUrl: string;
+  caption?: string;
+}): Promise<boolean> {
+  try {
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await supabase.from('stories').insert([
+      {
+        user_id: story.userId,
+        username: story.username,
+        display_name: story.displayName,
+        avatar: story.avatar,
+        media_url: story.mediaUrl,
+        caption: story.caption || '',
+        expires_at: expiresAt,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+    if (error) {
+      console.warn('Supabase stories table insert notice:', error.message);
+    }
+    return !error;
+  } catch (err) {
+    console.warn('Exception inserting story into Supabase:', err);
+    return false;
+  }
+}
+
+/**
+ * Fetch strictly active 24-hour stories from Supabase
+ */
+export async function fetchSupabaseActiveStories(): Promise<StoryItem[]> {
+  try {
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('stories')
+      .select('*')
+      .gt('expires_at', nowIso)
+      .order('created_at', { ascending: false });
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map((row: any) => ({
+        id: String(row.id),
+        username: row.username || 'creator',
+        displayName: row.display_name || row.username || 'Creator',
+        avatar:
+          row.avatar ||
+          `https://api.dicebear.com/7.x/bottts/svg?seed=${row.username}&backgroundColor=06b6d4,a855f7`,
+        storyMediaUrl: row.media_url,
+        caption: row.caption || undefined,
+        timestamp: 'Just now',
+        isVerified: true,
+      }));
+    }
+    return [];
+  } catch (err) {
+    console.warn('Error fetching active stories from Supabase:', err);
+    return [];
   }
 }
 

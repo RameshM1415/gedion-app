@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, Sparkles, Image as ImageIcon, Send, Check } from 'lucide-react';
+import { X, Upload, Sparkles, Image as ImageIcon, Send, Check, Loader2 } from 'lucide-react';
 import { AuthUser } from '../utils/authStorage';
 import { StoryItem } from '../types';
+import { uploadMediaToSupabaseStorage, insertSupabaseStory } from '../utils/supabaseClient';
 
 interface AddStoryModalProps {
   isOpen: boolean;
@@ -11,32 +12,14 @@ interface AddStoryModalProps {
   currentUser: AuthUser | null;
 }
 
-const PRESET_STORIES = [
-  {
-    name: 'Cyber Neon',
-    url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    name: 'Neo Tokyo',
-    url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    name: 'Synth Horizon',
-    url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    name: 'Stage Energy',
-    url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
-  },
-];
-
 export const AddStoryModal: React.FC<AddStoryModalProps> = ({
   isOpen,
   onClose,
   onPublishStory,
   currentUser,
 }) => {
-  const [selectedMediaUrl, setSelectedMediaUrl] = useState<string>(PRESET_STORIES[0].url);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedMediaUrl, setSelectedMediaUrl] = useState<string>('');
   const [caption, setCaption] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -47,15 +30,26 @@ export const AddStoryModal: React.FC<AddStoryModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setSelectedFile(file);
     const localUrl = URL.createObjectURL(file);
     setSelectedMediaUrl(localUrl);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMediaUrl) return;
 
     setIsSubmitting(true);
+
+    let finalMediaUrl = selectedMediaUrl;
+
+    if (selectedFile) {
+      try {
+        finalMediaUrl = await uploadMediaToSupabaseStorage(selectedFile, 'stories');
+      } catch (err) {
+        console.warn('Storage upload note:', err);
+      }
+    }
 
     const newStory: StoryItem = {
       id: `story_${Date.now()}`,
@@ -64,18 +58,26 @@ export const AddStoryModal: React.FC<AddStoryModalProps> = ({
       avatar:
         currentUser?.avatar ||
         'https://api.dicebear.com/7.x/bottts/svg?seed=gedion_creator&backgroundColor=06b6d4,a855f7',
-      storyMediaUrl: selectedMediaUrl,
+      storyMediaUrl: finalMediaUrl,
       caption: caption.trim() || undefined,
       timestamp: 'Just now',
       isVerified: currentUser?.provider === 'google',
       isViewed: false,
     };
 
-    setTimeout(() => {
-      onPublishStory(newStory);
-      setIsSubmitting(false);
-      onClose();
-    }, 300);
+    // Insert into Supabase stories table (expires_at = now() + 24 hours)
+    insertSupabaseStory({
+      userId: currentUser?.id || 'anonymous',
+      username: newStory.username,
+      displayName: newStory.displayName,
+      avatar: newStory.avatar,
+      mediaUrl: finalMediaUrl,
+      caption: newStory.caption,
+    }).catch(() => {});
+
+    onPublishStory(newStory);
+    setIsSubmitting(false);
+    onClose();
   };
 
   const isVideo =
@@ -158,38 +160,6 @@ export const AddStoryModal: React.FC<AddStoryModalProps> = ({
             className="hidden"
             onChange={handleFileChange}
           />
-
-          {/* Preset quick selector */}
-          <div className="mt-3">
-            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider block mb-1.5">
-              Quick Aesthetic Presets
-            </span>
-            <div className="grid grid-cols-4 gap-2">
-              {PRESET_STORIES.map((preset) => (
-                <button
-                  key={preset.name}
-                  type="button"
-                  onClick={() => setSelectedMediaUrl(preset.url)}
-                  className={`relative aspect-square rounded-xl overflow-hidden border transition-all ${
-                    selectedMediaUrl === preset.url
-                      ? 'border-cyan-400 ring-2 ring-cyan-400/40 scale-105'
-                      : 'border-white/10 opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <img
-                    src={preset.url}
-                    alt={preset.name}
-                    className="w-full h-full object-cover"
-                  />
-                  {selectedMediaUrl === preset.url && (
-                    <div className="absolute inset-0 bg-cyan-500/25 flex items-center justify-center">
-                      <Check size={14} className="text-white drop-shadow" />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Caption Input */}
           <form onSubmit={handleSubmit} className="mt-3.5 space-y-3">

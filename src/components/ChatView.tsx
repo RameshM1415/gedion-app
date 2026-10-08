@@ -57,6 +57,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
   });
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [inboxTab, setInboxTab] = useState<'primary' | 'requests'>('primary');
+  const [requestConversations, setRequestConversations] = useState<Conversation[]>(() => {
+    try {
+      const stored = localStorage.getItem('gedion_chat_requests_v1');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [];
+  });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchedFriends, setSearchedFriends] = useState<SearchedUser[]>([]);
   const [isSearchingFriends, setIsSearchingFriends] = useState(false);

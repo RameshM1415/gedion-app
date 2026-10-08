@@ -805,7 +805,7 @@ export const App: React.FC = () => {
             <ActivityView
               onClose={() => setNavTab('home')}
               reels={reels}
-              onOpenChatWithUser={(user) => {
+              onOpenChatWithUser={(user: string) => {
                 setChatTargetUser(user);
                 setNavTab('messages');
               }}

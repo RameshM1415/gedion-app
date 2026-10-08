@@ -478,7 +478,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
       {/* Network glitch retry toast */}
       {fetchGlitch && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-950/90 border border-amber-500/50 text-[11px] font-bold text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.5)] backdrop-blur-md">
-          <span>⚠️ Supabase sync glitch</span>
+          <span>⚠️ Connection error</span>
           <button
             onClick={() => fetchReels(false)}
             disabled={isFetchingCloud}

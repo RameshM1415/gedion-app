@@ -71,7 +71,7 @@ export const CreatorInsightsModal: React.FC<CreatorInsightsModalProps> = ({
                 Creator Insights
               </h2>
               <p className="text-[10px] text-white/50 font-medium">
-                Real-Time Supabase Posts Telemetry
+                Account Performance & Reach
               </p>
             </div>
           </div>
@@ -161,7 +161,7 @@ export const CreatorInsightsModal: React.FC<CreatorInsightsModalProps> = ({
                 <span className="text-xl font-extrabold text-white tracking-tight">
                   {totalReels.toLocaleString('en-IN')}
                 </span>
-                <p className="text-[10px] text-white/40 mt-0.5">Active in Supabase posts</p>
+                <p className="text-[10px] text-white/40 mt-0.5">Active public videos</p>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-white/[0.04] to-transparent border border-emerald-500/30">
@@ -216,6 +216,13 @@ export const CreatorInsightsModal: React.FC<CreatorInsightsModalProps> = ({
                           src={reel.poster}
                           alt={reel.caption}
                           className="h-full w-full object-cover"
+                        />
+                      ) : reel.videoUrl ? (
+                        <video
+                          src={`${reel.videoUrl}#t=0.1`}
+                          className="h-full w-full object-cover"
+                          muted
+                          playsInline
                         />
                       ) : (
                         <Play size={14} className="text-cyan-400" />
