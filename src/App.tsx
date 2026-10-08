@@ -46,13 +46,13 @@ const getInitialStories = (): StoryItem[] => {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return [...parsed, ...MOCK_STORIES];
+        return parsed.filter((s: StoryItem) => !s.id.startsWith('story_mock') && !s.id.startsWith('mock_'));
       }
     }
   } catch (e) {
     console.error('Failed to parse cached stories', e);
   }
-  return MOCK_STORIES;
+  return [];
 };
 
 const getInitialReels = (): Reel[] => {
@@ -472,21 +472,8 @@ export const App: React.FC = () => {
 
   // Cloud Reels Handlers
   const handleReelsLoaded = useCallback((loadedReels: Reel[]) => {
-    setReels((prev) => {
-      let localCustom: Reel[] = [];
-      try {
-        const raw = localStorage.getItem('gedion_custom_reels');
-        if (raw) localCustom = JSON.parse(raw);
-      } catch (e) {
-        console.error(e);
-      }
-
-      const cloud = Array.isArray(loadedReels) ? loadedReels : [];
-      const combined = [...localCustom, ...prev.filter(r => !r.id.startsWith('mock_'))];
-      const uniqueLocal = combined.filter((r, idx, arr) => arr.findIndex(x => x.id === r.id) === idx);
-      const remainingCloud = cloud.filter((c) => !uniqueLocal.some((u) => u.id === c.id));
-      return [...uniqueLocal, ...remainingCloud];
-    });
+    if (!Array.isArray(loadedReels) || loadedReels.length === 0) return;
+    setReels(loadedReels);
   }, []);
 
   const handleNewRealtimeReel = useCallback((newReel: Reel) => {
@@ -502,14 +489,27 @@ export const App: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     fetchSupabaseReels().then((cloudReels) => {
-      if (isMounted) {
-        handleReelsLoaded(cloudReels);
+      if (isMounted && Array.isArray(cloudReels) && cloudReels.length > 0) {
+        let localCustom: Reel[] = [];
+        try {
+          const raw = localStorage.getItem('gedion_custom_reels');
+          if (raw) localCustom = JSON.parse(raw);
+        } catch {}
+        const seen = new Set<string>();
+        const merged: Reel[] = [];
+        for (const r of [...localCustom, ...cloudReels]) {
+          if (r && r.id && !seen.has(r.id)) {
+            seen.add(r.id);
+            merged.push(r);
+          }
+        }
+        setReels(merged);
       }
     });
     return () => {
       isMounted = false;
     };
-  }, [handleReelsLoaded]);
+  }, []);
 
   // Dynamic HTML Meta Theme-Color & Status Bar Synchronization
   useEffect(() => {

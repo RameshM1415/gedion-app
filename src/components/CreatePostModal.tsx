@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
+  ArrowLeft,
+  ArrowUp,
   Image as ImageIcon,
   Film,
   Upload,
@@ -136,6 +138,22 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       handleProcessFile(file);
+    }
+  };
+
+  const handleOpenVideoPicker = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = 'video/mp4,video/webm,video/quicktime,video/*';
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleOpenPhotoPicker = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = 'image/jpeg,image/png,image/webp,image/gif,image/*';
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
     }
   };
 
@@ -340,17 +358,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 md:p-6 bg-black/60 backdrop-blur-md select-none">
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 15 }}
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 15 }}
-        transition={{ duration: 0.2 }}
-        className={`relative w-full max-w-[580px] h-full sm:h-[88vh] max-h-[780px] rounded-none sm:rounded-2xl overflow-hidden flex flex-col shadow-2xl border ${
-          isDark
-            ? 'bg-[#121212] border-zinc-800 text-white'
-            : 'bg-white border-zinc-200 text-black'
-        }`}
+        exit={{ opacity: 0, scale: 0.95, y: 12 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        className="relative w-full max-w-[560px] h-full sm:h-auto sm:max-h-[88vh] rounded-none sm:rounded-3xl overflow-hidden flex flex-col bg-white dark:bg-[#121212] ring-1 ring-neutral-200/80 dark:ring-neutral-800 border border-neutral-200/60 dark:border-neutral-800 shadow-2xl shadow-black/15"
       >
         {/* Hidden file input */}
         <input
@@ -362,45 +376,38 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
         />
 
         {/* TOP MODAL HEADER */}
-        <header
-          className={`flex items-center justify-between px-4 h-13 border-b shrink-0 ${
-            isDark ? 'border-zinc-800 bg-[#121212]' : 'border-zinc-200 bg-white'
-          }`}
-        >
-          {/* Left Action: Cancel / Discard */}
-          <button
-            type="button"
-            disabled={isUploading}
-            onClick={() => {
-              if (selectedFile) {
-                if (window.confirm('Discard your changes and close?')) {
+        <header className="relative flex items-center justify-between px-4 sm:px-5 h-13 sm:h-14 border-b border-neutral-100 dark:border-neutral-800 shrink-0 bg-white dark:bg-[#121212]">
+          {/* Left Action: Back Arrow when file selected, or placeholder spacer */}
+          {selectedFile ? (
+            <button
+              type="button"
+              disabled={isUploading}
+              onClick={() => {
+                if (window.confirm('Discard your changes and select another file?')) {
                   handleResetMedia();
-                  onClose();
                 }
-              } else {
-                onClose();
-              }
-            }}
-            className={`p-1.5 rounded-full hover:opacity-70 active:scale-90 transition-transform cursor-pointer ${
-              isUploading ? 'opacity-40 cursor-not-allowed' : ''
-            }`}
-            aria-label="Close"
-          >
-            <X size={22} />
-          </button>
+              }}
+              className="p-1.5 -ml-1 rounded-full text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-40"
+              aria-label="Back"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          ) : (
+            <div className="w-8" />
+          )}
 
-          {/* Center Title */}
-          <h2 className="font-bold text-base tracking-tight">
-            {selectedFile ? 'Create New Post' : 'Select Media'}
+          {/* Centered Title */}
+          <h2 className="absolute left-1/2 -translate-x-1/2 font-semibold text-base tracking-tight text-neutral-900 dark:text-neutral-100 pointer-events-none">
+            {selectedFile ? 'Create new post' : 'Upload'}
           </h2>
 
-          {/* Right Action: Share / Post Button */}
+          {/* Right Action: Share button when file selected, or X Close button when empty */}
           {selectedFile ? (
             <button
               type="button"
               disabled={isUploading}
               onClick={handleSharePost}
-              className={`text-sm font-bold text-[#0095f6] hover:text-[#1877f2] active:opacity-60 transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`text-sm font-semibold text-[#0095f6] hover:text-[#1877f2] active:opacity-60 transition-all cursor-pointer flex items-center gap-1.5 ${
                 isUploading ? 'opacity-40 cursor-not-allowed' : ''
               }`}
             >
@@ -414,13 +421,21 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               )}
             </button>
           ) : (
-            <div className="w-8" />
+            <button
+              type="button"
+              disabled={isUploading}
+              onClick={onClose}
+              className="p-2 -mr-1 rounded-full text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
           )}
         </header>
 
         {/* UPLOAD PROGRESS BAR (When active) */}
         {isUploading && (
-          <div className="w-full bg-zinc-800/40 h-1 relative overflow-hidden">
+          <div className="w-full bg-neutral-100 dark:bg-neutral-800 h-1 relative overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-[#0095f6] via-[#a855f7] to-[#ec4899]"
               initial={{ width: '0%' }}
@@ -440,7 +455,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               <button
                 type="button"
                 onClick={() => setErrorMessage(null)}
-                className="hover:opacity-75"
+                className="hover:opacity-75 cursor-pointer"
               >
                 <X size={14} />
               </button>
@@ -448,82 +463,71 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
           )}
 
           {!selectedFile ? (
-            /* STEP 1: EMPTY STATE / FILE SELECTOR */
+            /* STEP 1: EMPTY STATE / GediOn BRANDED UPLOAD CARD */
             <div
               onDrop={handleDrop}
               onDragOver={handleDragOver}
-              className="flex-1 flex flex-col items-center justify-center p-8 text-center"
+              className="flex-1 min-h-[380px] sm:min-h-[440px] flex flex-col items-center justify-center p-6 sm:p-10 text-center"
             >
+              {/* 1. Official GediOn Brand App Icon / Logo */}
               <div className="relative mb-5 flex items-center justify-center">
-                <div
-                  className={`w-24 h-24 rounded-full flex items-center justify-center ${
-                    isDark ? 'bg-zinc-800/80 text-zinc-300' : 'bg-zinc-100 text-zinc-700'
-                  }`}
-                >
-                  <div className="relative flex items-center justify-center">
-                    <ImageIcon size={38} className="translate-x-[-6px] translate-y-[-4px]" />
-                    <Film size={34} className="translate-x-[8px] translate-y-[6px] text-[#0095f6]" />
+                {/* Ambient glowing gradient halo */}
+                <div className="absolute -inset-2.5 rounded-full bg-gradient-to-tr from-[#fba73f]/25 via-[#dc2743]/20 to-[#0095f6]/25 blur-lg opacity-85 pointer-events-none" />
+
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full p-[2.5px] bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#0095f6] shadow-xl">
+                  <div className="w-full h-full rounded-full overflow-hidden bg-black flex items-center justify-center">
+                    <img
+                      src="/gedion-icon.jpg"
+                      alt="GediOn Official Logo"
+                      className="w-full h-full object-cover object-center select-none pointer-events-none"
+                    />
                   </div>
                 </div>
               </div>
 
-              <h3 className="text-xl font-bold mb-1.5 tracking-tight">
-                Drag photos and videos here
+              {/* Directly underneath the logo: Bold, High-contrast Dark Title "Upload" */}
+              <h3 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
+                Upload
               </h3>
-              <p className={`text-xs max-w-xs mb-6 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                Share your best moments to GediOn Feed or Reels. Supports high-res JPG, PNG, and MP4 up to 100MB.
+
+              {/* Subtle, Clean Subtext */}
+              <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-xs mx-auto leading-relaxed mt-1.5 mb-7">
+                Share your latest videos and photos with your friends
               </p>
 
-              {/* Primary Select Buttons */}
-              <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full max-w-xs">
+              {/* 2. Two Prominent & Separate Action Buttons (With Upload Arrow) */}
+              <div className="w-full max-w-xs flex flex-col gap-3.5 mb-2">
+                {/* Button 1 ("Upload Video"): Solid high-contrast button with upward arrow and video/reels clapperboard */}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#0095f6] hover:bg-[#1877f2] text-white text-xs font-bold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={handleOpenVideoPicker}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 text-white font-semibold text-sm shadow-md active:scale-95 transition-all duration-150 flex items-center justify-center gap-3 cursor-pointer group"
                 >
-                  <Upload size={16} />
-                  <span>Select from Computer / Phone</span>
+                  <div className="flex items-center gap-1.5 text-white/95 dark:text-neutral-900">
+                    <ArrowUp size={18} strokeWidth={2.4} className="group-hover:-translate-y-0.5 transition-transform" />
+                    <Film size={18} strokeWidth={2.2} />
+                  </div>
+                  <span>Upload Video</span>
+                </button>
+
+                {/* Button 2 ("Upload Photo"): Solid Instagram blue button with upward arrow and photo/camera icon */}
+                <button
+                  type="button"
+                  onClick={handleOpenPhotoPicker}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-[#0095F6] hover:bg-[#1877F2] text-white font-semibold text-sm shadow-md active:scale-95 transition-all duration-150 flex items-center justify-center gap-3 cursor-pointer group"
+                >
+                  <div className="flex items-center gap-1.5 text-white/95">
+                    <ArrowUp size={18} strokeWidth={2.4} className="group-hover:-translate-y-0.5 transition-transform" />
+                    <ImageIcon size={18} strokeWidth={2.2} />
+                  </div>
+                  <span>Upload Photo</span>
                 </button>
               </div>
 
-              {/* Secondary Media Mode Suggestions */}
-              <div className="mt-8 flex items-center gap-4 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (fileInputRef.current) {
-                      fileInputRef.current.accept = 'image/jpeg,image/png,image/webp,image/gif';
-                      fileInputRef.current.click();
-                    }
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
-                    isDark
-                      ? 'border-zinc-800 hover:border-zinc-700 text-zinc-300 bg-zinc-900/40'
-                      : 'border-zinc-200 hover:border-zinc-300 text-zinc-700 bg-zinc-50'
-                  }`}
-                >
-                  <ImageIcon size={14} className="text-emerald-500" />
-                  <span>Photo (JPG, PNG)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (fileInputRef.current) {
-                      fileInputRef.current.accept = 'video/mp4,video/webm,video/quicktime';
-                      fileInputRef.current.click();
-                    }
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
-                    isDark
-                      ? 'border-zinc-800 hover:border-zinc-700 text-zinc-300 bg-zinc-900/40'
-                      : 'border-zinc-200 hover:border-zinc-300 text-zinc-700 bg-zinc-50'
-                  }`}
-                >
-                  <Film size={14} className="text-[#0095f6]" />
-                  <span>Video / Reel (MP4)</span>
-                </button>
-              </div>
+              {/* Subtle Drag & Drop Note */}
+              <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-4 select-none">
+                or drag and drop files anywhere here • up to 100MB
+              </p>
             </div>
           ) : (
             /* STEP 2: LIVE MEDIA PREVIEW & POST DETAILS */
@@ -619,20 +623,20 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               </div>
 
               {/* POST DETAILS & CONFIGURATION */}
-              <div className="p-4 flex flex-col gap-4">
+              <div className="p-4 sm:p-5 flex flex-col gap-4">
                 {/* Creator Chip Preview */}
                 <div className="flex items-center gap-3">
                   <img
                     src={activeUser.avatar}
                     alt={activeUser.displayName}
-                    className="w-9 h-9 rounded-full object-cover border border-zinc-500/20"
+                    className="w-9 h-9 rounded-full object-cover ring-1 ring-neutral-200 dark:ring-neutral-800"
                   />
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1">
-                      <span className="font-bold text-xs">{activeUser.username}</span>
+                      <span className="font-semibold text-xs text-neutral-900 dark:text-neutral-100">{activeUser.username}</span>
                       <span className="text-[#0095f6] text-[10px]">●</span>
                     </div>
-                    <span className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
                       GediOn Creator
                     </span>
                   </div>
@@ -640,25 +644,17 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
                 {/* Publish Format Toggle (Feed Post vs Reel) */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                  <label className="text-xs font-bold uppercase tracking-wider text-neutral-400">
                     Publish As
                   </label>
-                  <div
-                    className={`grid grid-cols-2 p-1 rounded-xl border ${
-                      isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-zinc-100 border-zinc-200'
-                    }`}
-                  >
+                  <div className="grid grid-cols-2 p-1 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800">
                     <button
                       type="button"
                       onClick={() => setPostType('post')}
-                      className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         postType === 'post'
-                          ? isDark
-                            ? 'bg-zinc-800 text-white shadow-sm'
-                            : 'bg-white text-black shadow-sm'
-                          : isDark
-                          ? 'text-zinc-400 hover:text-white'
-                          : 'text-zinc-600 hover:text-black'
+                          ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm'
+                          : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
                       }`}
                     >
                       <ImageIcon size={14} />
@@ -668,14 +664,10 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setPostType('reel')}
-                      className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         postType === 'reel'
-                          ? isDark
-                            ? 'bg-zinc-800 text-white shadow-sm'
-                            : 'bg-white text-black shadow-sm'
-                          : isDark
-                          ? 'text-zinc-400 hover:text-white'
-                          : 'text-zinc-600 hover:text-black'
+                          ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm'
+                          : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
                       }`}
                     >
                       <Film size={14} className="text-[#0095f6]" />
@@ -687,10 +679,10 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 {/* Caption & Hashtags Textarea */}
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                    <label className="text-xs font-bold uppercase tracking-wider text-neutral-400">
                       Caption & Tags
                     </label>
-                    <span className="text-[11px] text-zinc-500">
+                    <span className="text-[11px] text-neutral-500">
                       {caption.length}/2,200
                     </span>
                   </div>
@@ -701,11 +693,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}
                     placeholder="Write a caption or add hashtags (e.g. #GediOn, #Viral)..."
-                    className={`w-full p-3 rounded-xl border text-xs resize-none outline-none transition-colors ${
-                      isDark
-                        ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500 focus:border-[#0095f6]'
-                        : 'bg-zinc-50 border-zinc-200 text-black placeholder-zinc-400 focus:border-[#0095f6]'
-                    }`}
+                    className="w-full p-3 rounded-xl border border-neutral-200/90 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 focus:bg-white dark:focus:bg-neutral-900 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 outline-none focus:border-[#0095f6] focus:ring-1 focus:ring-[#0095f6]/20 resize-none transition-colors"
                   />
 
                   {/* Quick Hashtag Chips */}
@@ -715,12 +703,10 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                         key={tag}
                         type="button"
                         onClick={() => handleAddHashtag(tag)}
-                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all cursor-pointer active:scale-95 ${
+                        className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all cursor-pointer active:scale-95 ${
                           caption.includes(tag)
                             ? 'bg-[#0095f6]/10 text-[#0095f6] border-[#0095f6]/40'
-                            : isDark
-                            ? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
-                            : 'bg-zinc-100 border-zinc-200 text-zinc-600 hover:text-black hover:border-zinc-300'
+                            : 'bg-neutral-50 dark:bg-neutral-900/60 border-neutral-200/80 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:border-neutral-300'
                         }`}
                       >
                         {tag}
@@ -730,17 +716,15 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 </div>
 
                 {/* Optional Location Input */}
-                <div className="flex items-center gap-2 p-2.5 rounded-xl border">
-                  <MapPin size={16} className="text-zinc-400 shrink-0" />
+                <div className="flex items-center gap-2 p-2.5 rounded-xl border border-neutral-200/90 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
+                  <MapPin size={16} className="text-neutral-400 shrink-0" />
                   <input
                     type="text"
                     disabled={isUploading}
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Add location (optional)"
-                    className={`w-full text-xs bg-transparent outline-none ${
-                      isDark ? 'text-white placeholder-zinc-500' : 'text-black placeholder-zinc-400'
-                    }`}
+                    className="w-full text-xs bg-transparent text-neutral-900 dark:text-white placeholder-neutral-400 outline-none"
                   />
                 </div>
 
@@ -761,20 +745,12 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
         {/* BOTTOM ACTION BAR (When file is selected) */}
         {selectedFile && (
-          <footer
-            className={`p-3 border-t shrink-0 flex items-center justify-between gap-3 ${
-              isDark ? 'border-zinc-800 bg-[#121212]' : 'border-zinc-200 bg-white'
-            }`}
-          >
+          <footer className="p-3.5 border-t border-neutral-100 dark:border-neutral-800 shrink-0 flex items-center justify-between gap-3 bg-white dark:bg-[#121212]">
             <button
               type="button"
               disabled={isUploading}
               onClick={handleResetMedia}
-              className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                isDark
-                  ? 'border-zinc-800 hover:bg-zinc-900 text-zinc-300'
-                  : 'border-zinc-200 hover:bg-zinc-100 text-zinc-700'
-              } ${isUploading ? 'opacity-40 cursor-not-allowed' : ''}`}
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 transition-colors cursor-pointer disabled:opacity-40"
             >
               Cancel
             </button>
@@ -783,7 +759,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               type="button"
               disabled={isUploading}
               onClick={handleSharePost}
-              className={`flex-1 py-2.5 px-4 rounded-xl bg-[#0095f6] hover:bg-[#1877f2] text-white text-xs font-bold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-2.5 px-4 rounded-xl bg-[#0095f6] hover:bg-[#1877f2] text-white text-xs font-semibold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 isUploading ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >

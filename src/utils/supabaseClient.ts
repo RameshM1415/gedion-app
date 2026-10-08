@@ -266,7 +266,6 @@ export function mapSupabaseRowToReel(row: SupabaseReelRow): Reel {
         ? String(row.views_count)
         : '0',
     themeAccent: '#06b6d4',
-    badgeText: 'CDN 720p',
     mediaType: 'video',
     comments: [],
   };

@@ -365,9 +365,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       return;
     }
 
-    // 2. User is ALREADY on Reels tab: Debounce single-tap from double-tap (280ms threshold)
+    // 2. User is ALREADY on Reels tab: Debounce single-tap from double-tap (350ms threshold)
     const now = Date.now();
-    const DOUBLE_TAP_THRESHOLD = 280; // 280ms window for double tap
+    const DOUBLE_TAP_THRESHOLD = 350; // 350ms window for double tap
 
     if (now - lastReelsTapRef.current < DOUBLE_TAP_THRESHOLD) {
       // Double tap detected while already on Reels view!

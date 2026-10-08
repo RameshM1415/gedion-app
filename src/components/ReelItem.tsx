@@ -79,6 +79,13 @@ export const ReelItem: React.FC<ReelItemProps> = ({
       if (videoRef.current) {
         try {
           videoRef.current.pause();
+          videoRef.current.currentTime = 0;
+        } catch {}
+      }
+      if (audioRef.current) {
+        try {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
         } catch {}
       }
     };
@@ -121,12 +128,16 @@ export const ReelItem: React.FC<ReelItemProps> = ({
 
     if (isActive) {
       if (video) {
-        if (video.currentTime === 0 || video.ended) {
+        // ALWAYS ensure video starts playing fresh from the very beginning (0 seconds)
+        try {
           video.currentTime = 0;
-        }
+        } catch {}
+
         if (audio) {
-          audio.currentTime = video.currentTime;
-          audio.muted = isMuted;
+          try {
+            audio.currentTime = 0;
+            audio.muted = isMuted;
+          } catch {}
         }
         video.muted = reel.audioUrl ? true : isMuted;
 
@@ -158,17 +169,26 @@ export const ReelItem: React.FC<ReelItemProps> = ({
             });
         }
       } else if (audio) {
-        audio.currentTime = 0;
-        audio.muted = isMuted;
-        audio.play().catch(() => {});
+        try {
+          audio.currentTime = 0;
+          audio.muted = isMuted;
+          audio.play().catch(() => {});
+        } catch {}
         setIsPlaying(true);
       }
     } else {
+      // Inactive: Immediately pause and reset playback position to the start (0 seconds)
       if (video) {
-        video.pause();
+        try {
+          video.pause();
+          video.currentTime = 0;
+        } catch {}
       }
       if (audio) {
-        audio.pause();
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+        } catch {}
       }
       setIsPlaying(false);
       setIsBuffering(false);
@@ -507,16 +527,26 @@ export const ReelItem: React.FC<ReelItemProps> = ({
           onLoadedData={() => {
             setVideoLoaded(true);
             setIsBuffering(false);
-            if (isActive && videoRef.current && videoRef.current.paused) {
-              const p = videoRef.current.play();
-              if (p !== undefined) {
-                p.catch(() => {
-                  if (videoRef.current) {
-                    videoRef.current.muted = true;
-                    videoRef.current.play().catch(() => {});
-                  }
-                });
+            if (isActive && videoRef.current) {
+              if (videoRef.current.paused) {
+                try {
+                  videoRef.current.currentTime = 0;
+                } catch {}
+                const p = videoRef.current.play();
+                if (p !== undefined) {
+                  p.catch(() => {
+                    if (videoRef.current) {
+                      videoRef.current.muted = true;
+                      videoRef.current.play().catch(() => {});
+                    }
+                  });
+                }
               }
+            } else if (!isActive && videoRef.current) {
+              try {
+                videoRef.current.pause();
+                videoRef.current.currentTime = 0;
+              } catch {}
             }
           }}
           onWaiting={() => {
@@ -525,26 +555,43 @@ export const ReelItem: React.FC<ReelItemProps> = ({
           onPlaying={() => {
             setIsBuffering(false);
             setVideoLoaded(true);
-            setIsPlaying(true);
+            if (isActive) {
+              setIsPlaying(true);
+            } else if (videoRef.current) {
+              try {
+                videoRef.current.pause();
+                videoRef.current.currentTime = 0;
+              } catch {}
+            }
           }}
           onCanPlay={() => {
             setVideoLoaded(true);
             setIsBuffering(false);
-            if (isActive && videoRef.current && videoRef.current.paused) {
-              const p = videoRef.current.play();
-              if (p !== undefined) {
-                p.catch(() => {
-                  if (videoRef.current) {
-                    videoRef.current.muted = true;
-                    videoRef.current.play().catch(() => {});
-                  }
-                });
+            if (isActive && videoRef.current) {
+              if (videoRef.current.paused) {
+                try {
+                  videoRef.current.currentTime = 0;
+                } catch {}
+                const p = videoRef.current.play();
+                if (p !== undefined) {
+                  p.catch(() => {
+                    if (videoRef.current) {
+                      videoRef.current.muted = true;
+                      videoRef.current.play().catch(() => {});
+                    }
+                  });
+                }
               }
+            } else if (!isActive && videoRef.current) {
+              try {
+                videoRef.current.pause();
+                videoRef.current.currentTime = 0;
+              } catch {}
             }
           }}
           onSeeked={() => setIsBuffering(false)}
           onTimeUpdate={() => {
-            if (audioRef.current && videoRef.current && !audioRef.current.paused) {
+            if (isActive && audioRef.current && videoRef.current && !audioRef.current.paused) {
               if (Math.abs(videoRef.current.currentTime - audioRef.current.currentTime) > 0.3) {
                 audioRef.current.currentTime = videoRef.current.currentTime;
               }

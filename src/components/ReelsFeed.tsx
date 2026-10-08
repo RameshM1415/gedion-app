@@ -183,9 +183,14 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
     };
   }, [fetchReels, setReels, onNewRealtimeReel]);
 
-  // Keep in sync with parent reels prop
+  // Keep in sync with parent reels prop (prevent unnecessary object identity churn)
   useEffect(() => {
-    setFeedReels(reels);
+    setFeedReels((prev) => {
+      if (prev.length === reels.length && prev.every((r, idx) => r.id === reels[idx]?.id)) {
+        return prev;
+      }
+      return reels;
+    });
   }, [reels]);
 
   // Smooth scroll to top ONLY when scrollToTopTrigger increments after mount
@@ -207,9 +212,10 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
 
   // Instagram-Style Reels Refresh & Content Shuffling Logic (Double-Tap & Pull-to-Refresh)
   const performReelsRefreshAndShuffle = useCallback(async () => {
+    const previousTopId = feedReels[0]?.id;
     const previousPlayingId = feedReels[activeIndex]?.id;
     setIsReelsRefreshing(true);
-    setPullY(45); // Reveal the top circular refresh ring
+    setPullY(48); // Reveal the top circular refresh ring
 
     // Instantly scroll/snap container to top index 0
     if (containerRef.current) {
@@ -218,17 +224,26 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
     setActiveIndex(0);
     onStoriesVisibilityChange?.(true);
 
-    // Safety timeout: Spinner must NEVER stay stuck on screen (max 550ms)
+    // Safety timeout: Spinner must NEVER stay stuck on screen (max 500ms)
     const safetyTimer = setTimeout(() => {
       setIsReelsRefreshing(false);
       setIsPullRefreshing(false);
       setPullY(0);
-    }, 550);
+    }, 500);
 
     try {
-      // Re-query fresh reels directly from Supabase
-      const cloudReels = await fetchSupabaseReels();
-      setFetchGlitch(false);
+      // Re-query fresh reels directly from Supabase with quick timeout fallback
+      let cloudReels: Reel[] = [];
+      try {
+        const fetchPromise = fetchSupabaseReels();
+        const timeoutPromise = new Promise<Reel[]>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 300)
+        );
+        cloudReels = await Promise.race([fetchPromise, timeoutPromise]);
+        setFetchGlitch(false);
+      } catch {
+        // Fall back to existing cloud or local
+      }
 
       let localCustom: Reel[] = [];
       try {
@@ -253,15 +268,22 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
           [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
 
-        // CRITICAL: The video/post that was showing before refresh must NOT remain at the top;
-        // fresh/different content must appear at the top!
-        if (previousPlayingId && shuffled[0].id === previousPlayingId && shuffled.length > 1) {
-          const swapIdx = shuffled.findIndex((r, idx) => idx > 0 && r.id !== previousPlayingId);
-          if (swapIdx > 0) {
-            [shuffled[0], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[0]];
-          } else {
-            const target = 1 + Math.floor(Math.random() * (shuffled.length - 1));
-            [shuffled[0], shuffled[target]] = [shuffled[target], shuffled[0]];
+        // CRITICAL REQUIREMENT:
+        // Do NOT keep the same video at index 0.
+        // A brand new / different video MUST be placed at index 0.
+        if (shuffled.length > 1) {
+          const avoidIds = new Set<string>();
+          if (previousTopId) avoidIds.add(previousTopId);
+          if (previousPlayingId) avoidIds.add(previousPlayingId);
+
+          if (avoidIds.has(shuffled[0].id)) {
+            const swapIdx = shuffled.findIndex((r) => !avoidIds.has(r.id));
+            if (swapIdx > 0) {
+              [shuffled[0], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[0]];
+            } else {
+              const target = 1 + Math.floor(Math.random() * (shuffled.length - 1));
+              [shuffled[0], shuffled[target]] = [shuffled[target], shuffled[0]];
+            }
           }
         }
 
@@ -272,7 +294,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
       console.warn('Network exception while refreshing reels:', err);
     } finally {
       clearTimeout(safetyTimer);
-      // Smoothly collapse spinner within max 500ms and ensure clean autoplay switch
+      // Smoothly hide spinner within max 420ms (well under 500ms) and immediately start playing newly placed top video
       setTimeout(() => {
         setIsReelsRefreshing(false);
         setIsPullRefreshing(false);
@@ -281,7 +303,7 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
           containerRef.current.scrollTop = 0;
         }
         setActiveIndex(0);
-      }, 500);
+      }, 420);
     }
   }, [activeIndex, feedReels, onReelsLoaded, onStoriesVisibilityChange]);
 
@@ -361,9 +383,11 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   const [pullY, setPullY] = useState(0);
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const touchStartYRef = useRef<number | null>(null);
+  const isMouseDownRef = useRef(false);
+  const mouseStartYRef = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (containerRef.current && containerRef.current.scrollTop <= 2 && activeIndex === 0) {
+    if (containerRef.current && containerRef.current.scrollTop <= 5 && activeIndex === 0) {
       touchStartYRef.current = e.touches[0].clientY;
     } else {
       touchStartYRef.current = null;
@@ -371,17 +395,17 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartYRef.current === null || isPullRefreshing) return;
+    if (touchStartYRef.current === null || isPullRefreshing || isReelsRefreshing) return;
     const diff = e.touches[0].clientY - touchStartYRef.current;
-    if (diff > 0 && containerRef.current && containerRef.current.scrollTop <= 2 && activeIndex === 0) {
-      setPullY(Math.min(diff * 0.4, 70));
+    if (diff > 0 && containerRef.current && containerRef.current.scrollTop <= 5 && activeIndex === 0) {
+      setPullY(Math.min(diff * 0.45, 65));
     } else {
       setPullY(0);
     }
   };
 
-  const handleTouchEnd = async () => {
-    if (pullY > 40 && !isPullRefreshing && !isReelsRefreshing) {
+  const handleTouchEnd = () => {
+    if (pullY > 35 && !isPullRefreshing && !isReelsRefreshing) {
       setIsPullRefreshing(true);
       performReelsRefreshAndShuffle();
     } else {
@@ -390,11 +414,43 @@ export const ReelsFeed: React.FC<ReelsFeedProps> = ({
     touchStartYRef.current = null;
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (containerRef.current && containerRef.current.scrollTop <= 5 && activeIndex === 0) {
+      isMouseDownRef.current = true;
+      mouseStartYRef.current = e.clientY;
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isMouseDownRef.current || mouseStartYRef.current === null || isPullRefreshing || isReelsRefreshing) return;
+    const diff = e.clientY - mouseStartYRef.current;
+    if (diff > 0 && containerRef.current && containerRef.current.scrollTop <= 5 && activeIndex === 0) {
+      setPullY(Math.min(diff * 0.45, 65));
+    } else {
+      setPullY(0);
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (!isMouseDownRef.current) return;
+    isMouseDownRef.current = false;
+    mouseStartYRef.current = null;
+    if (pullY > 35 && !isPullRefreshing && !isReelsRefreshing) {
+      setIsPullRefreshing(true);
+      performReelsRefreshAndShuffle();
+    } else {
+      setPullY(0);
+    }
+  };
+
   return (
     <div
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
       className="relative h-full w-full overflow-hidden bg-[#000000] select-none"
     >
       {/* Pull-to-refresh & Double-Tap circular ring spinner (Sub-header level) */}
