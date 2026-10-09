@@ -1493,9 +1493,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <CreatorInsightsModal
             isOpen={isInsightsOpen}
             onClose={() => setIsInsightsOpen(false)}
-            reels={creatorReels.length > 0 ? creatorReels : reels}
+            reels={creatorReels}
+            currentUser={currentUser}
             onOpenReel={(id) => {
-              const target = reels.find((r) => r.id === id);
+              const target = (creatorReels.length > 0 ? creatorReels : reels).find((r) => r.id === id);
               if (target) setPlaybackReel(target);
             }}
           />
