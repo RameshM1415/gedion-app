@@ -1312,24 +1312,50 @@ export async function insertSupabaseStory(story: {
   displayName: string;
   avatar: string;
   mediaUrl: string;
+  mediaType?: 'image' | 'video';
   caption?: string;
 }): Promise<boolean> {
   try {
+    const isVideo =
+      story.mediaType === 'video' ||
+      Boolean(
+        story.mediaUrl.match(/\.(mp4|webm|mov|ogg)($|\?)/i) ||
+        story.mediaUrl.startsWith('data:video')
+      );
+    const resolvedType: 'image' | 'video' = isVideo ? 'video' : 'image';
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    const { error } = await supabase.from('stories').insert([
-      {
-        user_id: story.userId,
-        username: story.username,
-        display_name: story.displayName,
-        avatar: story.avatar,
-        media_url: story.mediaUrl,
-        caption: story.caption || '',
-        expires_at: expiresAt,
-        created_at: new Date().toISOString(),
-      },
-    ]);
+    const createdAt = new Date().toISOString();
+
+    const fullPayload = {
+      user_id: story.userId,
+      username: story.username,
+      display_name: story.displayName,
+      avatar: story.avatar,
+      media_url: story.mediaUrl,
+      media_type: resolvedType,
+      caption: story.caption || '',
+      expires_at: expiresAt,
+      created_at: createdAt,
+    };
+
+    let { error } = await supabase.from('stories').insert([fullPayload]);
     if (error) {
-      console.warn('Supabase stories table insert notice:', error.message);
+      console.warn('Supabase full payload notice, retrying with exact core columns:', error.message);
+      // Fallback to exact core columns specified in requirements:
+      // { user_id, media_url, media_type, created_at, expires_at }
+      const corePayload = {
+        user_id: story.userId,
+        media_url: story.mediaUrl,
+        media_type: resolvedType,
+        created_at: createdAt,
+        expires_at: expiresAt,
+      };
+      const retry = await supabase.from('stories').insert([corePayload]);
+      if (retry.error) {
+        console.warn('Supabase core story insert notice:', retry.error.message);
+      } else {
+        error = null;
+      }
     }
     return !error;
   } catch (err) {
@@ -1344,25 +1370,59 @@ export async function insertSupabaseStory(story: {
 export async function fetchSupabaseActiveStories(): Promise<StoryItem[]> {
   try {
     const nowIso = new Date().toISOString();
-    const { data, error } = await supabase
-      .from('stories')
-      .select('*')
-      .gt('expires_at', nowIso)
-      .order('created_at', { ascending: false });
+    let rows: any[] | null = null;
 
-    if (!error && Array.isArray(data) && data.length > 0) {
-      return data.map((row: any) => ({
-        id: String(row.id),
-        username: row.username || 'creator',
-        displayName: row.display_name || row.username || 'Creator',
-        avatar:
+    // First try querying with profiles relationship
+    try {
+      const { data, error } = await supabase
+        .from('stories')
+        .select('*, profiles:user_id(username, full_name, avatar_url)')
+        .gt('expires_at', nowIso)
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        rows = data;
+      }
+    } catch {
+      rows = null;
+    }
+
+    // If join failed or returned null, perform direct table query
+    if (!rows) {
+      const { data, error } = await supabase
+        .from('stories')
+        .select('*')
+        .gt('expires_at', nowIso)
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        rows = data;
+      }
+    }
+
+    if (Array.isArray(rows) && rows.length > 0) {
+      return rows.map((row: any) => {
+        const profile = row.profiles || {};
+        const rawUsername = row.username || profile.username || 'creator';
+        const formattedUsername = rawUsername.startsWith('@') ? rawUsername : `@${rawUsername}`;
+        const displayName = row.display_name || profile.full_name || rawUsername;
+        const avatar =
           row.avatar ||
-          `https://api.dicebear.com/7.x/bottts/svg?seed=${row.username}&backgroundColor=06b6d4,a855f7`,
-        storyMediaUrl: row.media_url,
-        caption: row.caption || undefined,
-        timestamp: 'Just now',
-        isVerified: true,
-      }));
+          profile.avatar_url ||
+          `https://api.dicebear.com/7.x/bottts/svg?seed=${rawUsername}&backgroundColor=06b6d4,a855f7`;
+
+        return {
+          id: String(row.id),
+          username: formattedUsername,
+          displayName,
+          avatar,
+          storyMediaUrl: row.media_url,
+          caption: row.caption || undefined,
+          timestamp: 'Just now',
+          isVerified: true,
+          isViewed: false,
+        };
+      });
     }
     return [];
   } catch (err) {

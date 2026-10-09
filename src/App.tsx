@@ -29,6 +29,7 @@ import {
   deleteReelFromSupabase,
   updateReelLikesInSupabase,
   fetchFreshestSupabaseProfile,
+  fetchSupabaseActiveStories,
 } from './utils/supabaseClient';
 import { InstagramFeed } from './components/InstagramFeed';
 import { ReelsHeader } from './components/ReelsHeader';
@@ -117,8 +118,47 @@ export const App: React.FC = () => {
   const [isStoriesVisible, setIsStoriesVisible] = useState<boolean>(true);
 
   const hasUserStory = stories.some(
-    (s) => s.id.startsWith('story_') || (currentUser && s.username === currentUser.username)
+    (s) =>
+      s.id.startsWith('story_') ||
+      (currentUser &&
+        (s.username === currentUser.username ||
+          s.username === `@${currentUser.username.replace(/^@/, '')}`))
   );
+
+  // 1. Fetch live authentic stories from Supabase (expires_at > NOW()) and subscribe to real-time additions
+  useEffect(() => {
+    let isMounted = true;
+    const loadLiveStories = async () => {
+      try {
+        const live = await fetchSupabaseActiveStories();
+        if (isMounted && live.length > 0) {
+          setStories((prev) => {
+            const liveIds = new Set(live.map((s) => s.id));
+            const userCreated = prev.filter(
+              (s) => !liveIds.has(s.id) && s.id.startsWith('story_')
+            );
+            return [...userCreated, ...live];
+          });
+        }
+      } catch (err) {
+        console.warn('Error fetching active stories from Supabase on mount:', err);
+      }
+    };
+
+    loadLiveStories();
+
+    const channel = supabase
+      .channel('app-live-stories')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stories' }, () => {
+        loadLiveStories();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleSelectStory = (index: number) => {
     setSelectedStoryIndex(index);
@@ -131,7 +171,8 @@ export const App: React.FC = () => {
 
   const handlePublishStory = (newStory: StoryItem) => {
     setStories((prev) => {
-      const updated = [newStory, ...prev];
+      const filtered = prev.filter((s) => s.id !== newStory.id);
+      const updated = [newStory, ...filtered];
       try {
         const userCreated = updated.filter((s) => s.id.startsWith('story_'));
         localStorage.setItem(LOCAL_STORIES_STORAGE_KEY, JSON.stringify(userCreated));

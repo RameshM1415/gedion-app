@@ -32,6 +32,7 @@ export interface InstagramFeedProps {
   onShowToast?: (message: string) => void;
   hasUserStory?: boolean;
   scrollToTopTrigger?: number;
+  onPublishStory?: (newStory: StoryItem) => void;
 }
 
 export const InstagramFeed: React.FC<InstagramFeedProps> = ({
@@ -58,6 +59,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   onShowToast,
   hasUserStory = false,
   scrollToTopTrigger,
+  onPublishStory,
 }) => {
   const { isDark } = useTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -350,6 +352,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
           currentUser={currentUser}
           userAvatar={currentUser?.avatar_url || currentUser?.avatar}
           hasUserStory={hasUserStory}
+          onPublishStory={onPublishStory}
         />
       </div>
 
