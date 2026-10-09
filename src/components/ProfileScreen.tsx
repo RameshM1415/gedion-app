@@ -38,6 +38,7 @@ import { WalletScreen } from './WalletScreen';
 import { ReelOptionsMenu } from './ReelOptionsMenu';
 import { FollowersModal } from './FollowersModal';
 import { EditProfileModal } from './EditProfileModal';
+import { ProfileSavedTab } from './ProfileSavedTab';
 import { AuthUser, DEFAULT_AUTH_USER, getStoredAuth } from '../utils/authStorage';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -179,7 +180,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [playbackReel, setPlaybackReel] = useState<Reel | null>(null);
   const [playbackMuted, setPlaybackMuted] = useState(false);
 
-  // Saved reels state persisted in localStorage
+  // Saved reels state persisted in localStorage and Supabase
   const [savedReelIds, setSavedReelIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem(SAVED_REELS_STORAGE_KEY);
@@ -190,6 +191,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       // ignore
     }
     return reels.filter((r) => r.isBookmarked).map((r) => r.id);
+  });
+
+  // Saved reels array (full Reel items for Saved grid)
+  const [savedPosts, setSavedPosts] = useState<Reel[]>(() => {
+    try {
+      const saved = localStorage.getItem(SAVED_REELS_STORAGE_KEY);
+      const parsed: string[] = saved ? JSON.parse(saved) : [];
+      const matched = reels.filter((r) => r.isBookmarked || parsed.includes(r.id));
+      return matched;
+    } catch {
+      return reels.filter((r) => r.isBookmarked);
+    }
   });
 
   // Fetch creator reels from Supabase `posts` / `reels` table
@@ -489,8 +502,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   const handleDeleteReelFromProfile = useCallback(async (reelId: string) => {
-    // 1. Optimistically decrement REELS count and remove immediately from creatorReels & savedReels
+    // 1. Optimistically decrement REELS count and remove immediately from creatorReels & savedPosts
     setCreatorReels((prev) => prev.filter((r) => r.id !== reelId));
+    setSavedPosts((prev) => prev.filter((r) => r.id !== reelId));
     setSavedReelIds((prev) => prev.filter((id) => id !== reelId));
 
     // 2. Dismiss playback modal if currently open
@@ -538,6 +552,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       const deletedId = customEvent.detail?.reelId;
       if (deletedId) {
         setCreatorReels((prev) => prev.filter((r) => r.id !== deletedId));
+        setSavedPosts((prev) => prev.filter((r) => r.id !== deletedId));
         setSavedReelIds((prev) => prev.filter((id) => id !== deletedId));
         setPlaybackReel((current) => (current?.id === deletedId ? null : current));
       }
@@ -684,7 +699,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       try {
         const stored = localStorage.getItem(SAVED_REELS_STORAGE_KEY);
         if (stored) {
-          setSavedReelIds(JSON.parse(stored));
+          const ids: string[] = JSON.parse(stored);
+          setSavedReelIds(ids);
+          setSavedPosts((prev) => {
+            const pool = [...prev, ...reels];
+            const poolMap = new Map(pool.map((r) => [r.id, r]));
+            return ids.map((id) => poolMap.get(id)).filter(Boolean) as Reel[];
+          });
         }
       } catch {
         // ignore
@@ -696,7 +717,68 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       window.removeEventListener('saved-reels-updated', handleSavedUpdate);
       window.removeEventListener('storage', handleSavedUpdate);
     };
-  }, []);
+  }, [reels]);
+
+  // Fetch authentic saved posts from Supabase 'saved_posts' table for current user
+  useEffect(() => {
+    let isMounted = true;
+    const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
+    const activeUserId = active?.id;
+
+    const loadSavedFromSupabase = async () => {
+      try {
+        let dbSavedIds: string[] = [];
+        if (activeUserId) {
+          const { data, error } = await supabase
+            .from('saved_posts')
+            .select('post_id')
+            .eq('user_id', activeUserId);
+
+          if (!error && Array.isArray(data)) {
+            dbSavedIds = data.map((d: any) => String(d.post_id)).filter(Boolean);
+          }
+        }
+
+        let localIds: string[] = [];
+        try {
+          const stored = localStorage.getItem(SAVED_REELS_STORAGE_KEY);
+          if (stored) localIds = JSON.parse(stored);
+        } catch {}
+
+        const combinedIds = Array.from(new Set([...dbSavedIds, ...localIds]));
+        if (!isMounted) return;
+
+        if (combinedIds.length > 0) {
+          setSavedReelIds(combinedIds);
+        }
+
+        setSavedPosts((prev) => {
+          const pool = [...prev, ...reels];
+          const poolMap = new Map(pool.map((r) => [r.id, r]));
+          const nextList: Reel[] = [];
+          for (const id of combinedIds) {
+            const matched = poolMap.get(id);
+            if (matched) {
+              nextList.push({ ...matched, isBookmarked: true });
+            }
+          }
+          for (const r of reels) {
+            if (r.isBookmarked && !nextList.some((p) => p.id === r.id)) {
+              nextList.push(r);
+            }
+          }
+          return nextList;
+        });
+      } catch (err) {
+        console.warn('Error syncing saved posts from Supabase:', err);
+      }
+    };
+
+    loadSavedFromSupabase();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, reels]);
 
   // Sync edit modal state to parent to hide BottomNav
   useEffect(() => {
@@ -749,26 +831,115 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     onEditingChange?.(isEditModalOpen);
   }, [isEditModalOpen, onEditingChange]);
 
-  // Filter saved reels
-  const savedReels = reels.filter((r) => r.isBookmarked || savedReelIds.includes(r.id));
+  // Unsave post mutation: removes from state, decrements counter, and deletes from Supabase saved_posts
+  const handleUnsavePost = useCallback(
+    async (target: Reel) => {
+      const targetId = target.id;
+      const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
+      const targetUserId = active?.id || 'usr_rameshrao034';
+
+      // 1. Optimistically decrement saved counter and remove from state
+      const prevSavedPosts = [...savedPosts];
+      const prevSavedIds = [...savedReelIds];
+
+      const nextSavedPosts = savedPosts.filter((item) => item.id !== targetId);
+      const nextSavedIds = savedReelIds.filter((id) => id !== targetId);
+
+      setSavedPosts(nextSavedPosts);
+      setSavedReelIds(nextSavedIds);
+
+      try {
+        localStorage.setItem(SAVED_REELS_STORAGE_KEY, JSON.stringify(nextSavedIds));
+      } catch {}
+
+      showToast('Removed from saved posts');
+
+      // 2. DELETE record from Supabase 'saved_posts' table where post_id = target.id and user_id = currentUser.id
+      try {
+        let query = supabase.from('saved_posts').delete().eq('post_id', targetId);
+        if (targetUserId) {
+          query = query.eq('user_id', targetUserId);
+        }
+        const { error } = await query;
+        if (error) {
+          throw error;
+        }
+        window.dispatchEvent(new Event('saved-reels-updated'));
+      } catch (err) {
+        console.error('Failed to unsave post from Supabase:', err);
+        // Revert optimistic removal on error and notify user
+        setSavedPosts(prevSavedPosts);
+        setSavedReelIds(prevSavedIds);
+        try {
+          localStorage.setItem(SAVED_REELS_STORAGE_KEY, JSON.stringify(prevSavedIds));
+        } catch {}
+        showToast('Failed to unsave post. Reverted.');
+      }
+    },
+    [currentUser, savedPosts, savedReelIds]
+  );
+
+  // Save post mutation
+  const handleSavePost = useCallback(
+    async (target: Reel) => {
+      const targetId = target.id;
+      const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
+      const targetUserId = active?.id || 'usr_rameshrao034';
+
+      setSavedPosts((prev) => {
+        if (prev.some((p) => p.id === targetId)) return prev;
+        return [{ ...target, isBookmarked: true }, ...prev];
+      });
+      setSavedReelIds((prev) => {
+        if (prev.includes(targetId)) return prev;
+        const next = [targetId, ...prev];
+        try {
+          localStorage.setItem(SAVED_REELS_STORAGE_KEY, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      showToast('Saved to profile');
+
+      try {
+        await supabase.from('saved_posts').upsert(
+          {
+            user_id: targetUserId,
+            post_id: targetId,
+            created_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,post_id' }
+        );
+        window.dispatchEvent(new Event('saved-reels-updated'));
+      } catch (err) {
+        console.warn('Error saving post to Supabase:', err);
+      }
+    },
+    [currentUser]
+  );
 
   // Toggle Save / Unsave bookmark with instant Supabase sync and UI update
-  const handleToggleBookmarkSaved = async (reelId: string) => {
-    const isCurrentlySaved = savedReelIds.includes(reelId);
-    const nextSavedIds = isCurrentlySaved
-      ? savedReelIds.filter((id) => id !== reelId)
-      : [...savedReelIds, reelId];
+  const handleToggleBookmarkSaved = useCallback(
+    async (reelId: string) => {
+      const target =
+        savedPosts.find((p) => p.id === reelId) ||
+        reels.find((r) => r.id === reelId) ||
+        playbackReel;
+      if (!target) return;
 
-    setSavedReelIds(nextSavedIds);
-    try {
-      localStorage.setItem(SAVED_REELS_STORAGE_KEY, JSON.stringify(nextSavedIds));
-    } catch {}
+      const isCurrentlySaved =
+        savedPosts.some((p) => p.id === reelId) ||
+        savedReelIds.includes(reelId) ||
+        Boolean(target.isBookmarked);
 
-    const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
-    toggleSupabaseSavedPost(active?.id, reelId, !isCurrentlySaved).catch(() => {});
-
-    showToast(isCurrentlySaved ? 'Removed from saved posts' : 'Saved to profile');
-  };
+      if (isCurrentlySaved) {
+        await handleUnsavePost(target);
+      } else {
+        await handleSavePost(target);
+      }
+    },
+    [savedPosts, reels, playbackReel, savedReelIds, handleUnsavePost, handleSavePost]
+  );
 
   // 2. Tap to open full-screen playback
   const handleTileClick = (reel: Reel) => {
@@ -1154,7 +1325,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           }`}
         >
           <Bookmark size={16} />
-          <span>Saved ({savedReels.length})</span>
+          <span>Saved ({savedPosts.length})</span>
         </button>
       </div>
 
@@ -1259,77 +1430,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           )}
         </div>
       ) : (
-        /* Tab 2: Saved Reels */
-        <div className="mt-3 min-h-[220px]">
-          {savedReels.length > 0 ? (
-            <div className="grid grid-cols-3 gap-1">
-              {savedReels.map((reel) => {
-                const isVideo = reel.mediaType === 'video' || (!reel.mediaType && Boolean(reel.videoUrl));
-                return (
-                  <div
-                    key={reel.id}
-                    onClick={() => handleTileClick(reel)}
-                    className={`group relative aspect-[9/15] overflow-hidden cursor-pointer transition-all active:scale-95 ${
-                      isDark ? 'bg-zinc-900' : 'bg-zinc-100'
-                    }`}
-                  >
-                    {reel.poster ? (
-                      <img
-                        src={reel.poster}
-                        alt=""
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : reel.videoUrl ? (
-                      <video
-                        src={`${reel.videoUrl}#t=0.1`}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        muted
-                        playsInline
-                        preload="metadata"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-zinc-900 text-white">
-                        <Bookmark size={20} className="text-zinc-500" />
-                      </div>
-                    )}
-
-                    {/* Bookmark badge top-right */}
-                    <div className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md">
-                      <Bookmark size={11} className="fill-amber-400 text-amber-400" />
-                    </div>
-
-                    {isVideo && (
-                      <div className="absolute top-1.5 left-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md">
-                        <Play size={10} className="fill-white text-white translate-x-[0.5px]" />
-                      </div>
-                    )}
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1.5">
-                      <span className="text-[10px] font-bold text-white flex items-center gap-1 drop-shadow-md">
-                        <Heart size={10} className="fill-white text-white" />
-                        {reel.likesCount || reel.viewsCount || '0'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-              <div
-                className={`flex h-16 w-16 items-center justify-center rounded-full mb-3 border ${
-                  isDark ? 'border-zinc-800 bg-zinc-950 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
-                }`}
-              >
-                <Bookmark size={26} />
-              </div>
-              <h3 className="text-sm font-bold tracking-tight">Save</h3>
-              <p className="text-xs text-zinc-500 mt-1 max-w-xs leading-relaxed">
-                Save photos and videos that you want to see again. No one is notified, and only you can see what you&apos;ve saved.
-              </p>
-            </div>
-          )}
-        </div>
+        /* Tab 2: Saved Reels with fixed thumbnail previews and instant unsave */
+        <ProfileSavedTab
+          savedPosts={savedPosts}
+          onOpenReel={handleTileClick}
+          onUnsavePost={handleUnsavePost}
+          isDark={isDark}
+        />
       )}
 
       {/* ============================================================ */}
@@ -1362,12 +1469,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   onClick={() => handleToggleBookmarkSaved(playbackReel.id)}
                   className="p-2 rounded-full bg-black/60 backdrop-blur-md text-amber-400 border border-white/10 hover:border-white/30 hover:bg-black/80 transition-all active:scale-90 cursor-pointer"
                   aria-label="Bookmark"
-                  title={savedReelIds.includes(playbackReel.id) ? 'Unsave' : 'Save'}
+                  title={
+                    savedPosts.some((p) => p.id === playbackReel.id) ||
+                    savedReelIds.includes(playbackReel.id) ||
+                    Boolean(playbackReel.isBookmarked)
+                      ? 'Unsave'
+                      : 'Save'
+                  }
                 >
                   <Bookmark
                     size={16}
                     className={
-                      savedReelIds.includes(playbackReel.id)
+                      savedPosts.some((p) => p.id === playbackReel.id) ||
+                      savedReelIds.includes(playbackReel.id) ||
+                      Boolean(playbackReel.isBookmarked)
                         ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]'
                         : 'text-white'
                     }
@@ -1403,10 +1518,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
             {/* Video Player */}
             <div className="relative flex-1 h-full w-full flex items-center justify-center bg-black">
-              {playbackReel.videoUrl ? (
+              {playbackReel.videoUrl || (playbackReel as any).video_url ? (
                 <video
-                  src={playbackReel.videoUrl}
-                  poster={playbackReel.poster}
+                  src={playbackReel.videoUrl || (playbackReel as any).video_url}
+                  poster={playbackReel.poster || (playbackReel as any).thumbnail_url}
                   autoPlay
                   playsInline
                   loop
@@ -1415,8 +1530,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 />
               ) : (
                 <img
-                  src={playbackReel.poster}
-                  alt={playbackReel.caption}
+                  src={playbackReel.poster || (playbackReel as any).thumbnail_url}
+                  alt={playbackReel.caption || 'Reel'}
                   className="h-full w-full object-cover"
                 />
               )}
