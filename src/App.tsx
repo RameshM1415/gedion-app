@@ -116,6 +116,7 @@ export const App: React.FC = () => {
   const [isAddStoryOpen, setIsAddStoryOpen] = useState<boolean>(false);
   const [storyToast, setStoryToast] = useState<string | null>(null);
   const [isStoriesVisible, setIsStoriesVisible] = useState<boolean>(true);
+  const [hasUnreadActivity, setHasUnreadActivity] = useState<boolean>(false);
 
   const hasUserStory = stories.some(
     (s) =>
@@ -159,6 +160,75 @@ export const App: React.FC = () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // 1b. Listen to unread notifications and subscribe to Supabase Realtime alerts for Heart badge
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkUnread = async () => {
+      try {
+        const cleanUser = (currentUser?.username || '').toLowerCase().replace(/^@/, '');
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('is_read', false)
+          .limit(1);
+
+        if (isMounted) {
+          if (!error && data && data.length > 0) {
+            setHasUnreadActivity(true);
+          } else {
+            // Check local cache
+            try {
+              const raw = localStorage.getItem('gedion_notifications_v2');
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.some((n: any) => !n.isRead)) {
+                  setHasUnreadActivity(true);
+                  return;
+                }
+              }
+            } catch {}
+            setHasUnreadActivity(false);
+          }
+        }
+      } catch {
+        if (isMounted) setHasUnreadActivity(false);
+      }
+    };
+
+    checkUnread();
+
+    const handleUnreadEvent = (e: any) => {
+      const count = e.detail?.count;
+      setHasUnreadActivity(count === undefined ? true : count > 0);
+    };
+
+    window.addEventListener('gedion-unread-activity', handleUnreadEvent);
+
+    const cleanUser = (currentUser?.username || '').toLowerCase().replace(/^@/, '');
+    const channel = supabase
+      .channel(`app-header-notifs-${cleanUser || 'guest'}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload) => {
+          const row = payload.new;
+          if (!row) return;
+          const target = (row.recipient_username || row.recipient_id || row.user_id || '').toLowerCase();
+          if (!target || target === cleanUser || target === currentUser?.id?.toLowerCase()) {
+            setHasUnreadActivity(true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('gedion-unread-activity', handleUnreadEvent);
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.id, currentUser?.username]);
 
   const handleSelectStory = (index: number) => {
     setSelectedStoryIndex(index);
@@ -841,7 +911,11 @@ export const App: React.FC = () => {
                 setCreateMode('POST');
                 setNavTab('create');
               }}
-              onOpenActivity={() => setNavTab('activity')}
+              onOpenActivity={() => {
+                setNavTab('activity');
+                setHasUnreadActivity(false);
+              }}
+              hasUnreadActivity={hasUnreadActivity}
               onOpenMessages={() => setNavTab('messages')}
               onShowToast={(msg) => {
                 setFeedToast(msg);
@@ -946,6 +1020,7 @@ export const App: React.FC = () => {
           {navTab === 'activity' && (
             <ActivityView
               onClose={() => setNavTab('home')}
+              onOpenProfile={(username: string) => setSelectedProfileUsername(username)}
               reels={reels}
               onOpenChatWithUser={(user: string) => {
                 setChatTargetUser(user);

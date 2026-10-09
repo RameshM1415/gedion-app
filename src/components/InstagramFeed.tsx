@@ -28,6 +28,7 @@ export interface InstagramFeedProps {
   onSelectStory: (index: number) => void;
   onOpenCreate?: () => void;
   onOpenActivity?: () => void;
+  hasUnreadActivity?: boolean;
   onOpenMessages?: () => void;
   onShowToast?: (message: string) => void;
   hasUserStory?: boolean;
@@ -55,6 +56,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
   onSelectStory,
   onOpenCreate,
   onOpenActivity,
+  hasUnreadActivity = false,
   onOpenMessages,
   onShowToast,
   hasUserStory = false,
@@ -302,9 +304,12 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
               type="button"
               onClick={onOpenActivity}
               aria-label="Activity notifications"
-              className="p-1 active:scale-90 transition-transform cursor-pointer"
+              className="relative p-1 active:scale-90 transition-transform cursor-pointer"
             >
               <Heart size={24} strokeWidth={1.8} />
+              {hasUnreadActivity && (
+                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-black animate-pulse" />
+              )}
             </button>
 
             {/* Direct Messages (Send / Paper Plane) */}

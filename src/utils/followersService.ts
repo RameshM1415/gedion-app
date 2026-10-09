@@ -335,6 +335,40 @@ export async function followUser(
     console.warn('Note on Supabase followers insert:', err);
   }
 
+  // 1b. Emit Realtime notification for recipient in 'notifications' table
+  try {
+    await supabase.from('notifications').insert([
+      {
+        user_id: tId,
+        recipient_id: tId,
+        recipient_username: tUser,
+        actor_id: fId,
+        actor_username: fUser,
+        actor_name: follower.displayName || follower.username,
+        actor_avatar: follower.avatar,
+        type: 'follow',
+        message: 'started following you',
+        status: 'accepted',
+        is_read: false,
+        created_at: newRecord.created_at,
+      },
+    ]);
+  } catch {
+    // Non-blocking fallback for schemas with fewer columns
+    try {
+      await supabase.from('notifications').insert([
+        {
+          user_id: tId,
+          type: 'follow',
+          actor_username: fUser,
+          message: 'started following you',
+          is_read: false,
+          created_at: newRecord.created_at,
+        },
+      ]);
+    } catch {}
+  }
+
   // 2. Synchronize local store
   addLocalFollowRecord(newRecord);
 
