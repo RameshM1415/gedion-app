@@ -127,11 +127,11 @@ export const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({
                 <div className="relative h-12 w-12 rounded-2xl p-[1.5px] bg-gradient-to-tr from-cyan-400 via-sky-300 to-purple-500 shadow-[0_0_18px_rgba(6,182,212,0.6)] shrink-0 group">
                   <div className="h-full w-full rounded-[14px] overflow-hidden bg-black flex items-center justify-center">
                     <img
-                      src="/gedion-icon-192.png"
+                      src="https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png"
                       alt="GediOn App Icon"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/gedion-icon.jpg';
+                        (e.currentTarget as HTMLImageElement).src = 'https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png';
                       }}
                     />
                   </div>
@@ -213,11 +213,11 @@ export const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({
                 <div className="flex items-center gap-2">
                   <div className="h-9 w-9 rounded-xl p-[1px] bg-gradient-to-tr from-cyan-400 to-blue-500">
                     <img
-                      src="/gedion-icon-192.png"
+                      src="https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png"
                       alt="GediOn"
-                      className="h-full w-full rounded-[11px] object-cover bg-black"
+                      className="h-full w-full rounded-[11px] object-contain bg-black"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/gedion-icon.jpg';
+                        (e.currentTarget as HTMLImageElement).src = 'https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png';
                       }}
                     />
                   </div>

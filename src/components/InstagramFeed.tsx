@@ -285,18 +285,27 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
 
         {/* Clean vertically centered header content row */}
         <div className="flex items-center justify-between px-4 h-[44px] sm:h-[48px] w-full">
-          <span
+          <div
             onClick={() => {
               if (containerRef.current) {
                 containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
               }
             }}
-            className={`font-sans font-black text-[23px] sm:text-[25px] tracking-[-0.04em] select-none cursor-pointer active:scale-95 transition-all ${
-              isDark ? 'text-white' : 'text-zinc-950'
-            }`}
+            className="flex items-center gap-1.5 cursor-pointer select-none active:scale-95 transition-all"
           >
-            GediOn
-          </span>
+            <img
+              src="https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png"
+              alt="GediOn logo"
+              className="h-7 w-7 object-contain drop-shadow-sm"
+            />
+            <span
+              className={`font-sans font-black text-[22px] sm:text-[24px] tracking-[-0.04em] ${
+                isDark ? 'text-white' : 'text-zinc-950'
+              }`}
+            >
+              GediOn
+            </span>
+          </div>
 
           <div className="flex items-center gap-3">
             {/* Activity / Notifications (Heart) */}

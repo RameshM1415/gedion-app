@@ -18,11 +18,18 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 }) => {
   return (
     <header className="w-full h-[48px] px-4 flex items-center justify-between pointer-events-none select-none">
-      {/* Left: Sleek modern brand title "GediOn" styled in bold, elegant typography */}
-      <div className="flex items-center w-24 shrink-0 pointer-events-auto">
+      {/* Left: Sleek modern brand mark and title "GediOn" */}
+      <div
+        onClick={() => onTabChange?.('forYou')}
+        className="flex items-center gap-1.5 w-28 shrink-0 pointer-events-auto cursor-pointer select-none active:scale-95 transition-all"
+      >
+        <img
+          src="https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png"
+          alt="GediOn logo"
+          className="h-7 w-7 object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+        />
         <span
-          onClick={() => onTabChange?.('forYou')}
-          className="font-sans font-black text-[23px] sm:text-[25px] tracking-[-0.04em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)] cursor-pointer select-none active:scale-95 transition-all"
+          className="font-sans font-black text-[22px] sm:text-[24px] tracking-[-0.04em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]"
         >
           GediOn
         </span>

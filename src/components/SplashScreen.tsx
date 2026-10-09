@@ -86,9 +86,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-[28px] p-[2.5px] bg-gradient-to-tr from-[#f59e0b] via-[#ec4899] to-[#8b5cf6] shadow-[0_20px_40px_rgba(0,0,0,0.12),0_8px_16px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
             <div className="w-full h-full rounded-[25px] overflow-hidden bg-white flex items-center justify-center shadow-inner relative">
               <img
-                src="/gedion-icon.jpg"
+                src="https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png"
                 alt="GediOn"
-                className="w-full h-full object-cover select-none pointer-events-none"
+                className="w-full h-full object-contain select-none pointer-events-none"
               />
               {/* Subtle glass highlight sheen */}
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/10 pointer-events-none" />
