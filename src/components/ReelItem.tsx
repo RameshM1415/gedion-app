@@ -505,7 +505,7 @@ export const ReelItem: React.FC<ReelItemProps> = ({
         <div className="relative h-full w-full flex items-center justify-center overflow-hidden">
           <img
             src={mediaSource}
-            alt={reel.caption || 'GediOn Photo'}
+            alt=""
             loading="eager"
             className="h-full w-full object-cover transition-transform duration-200 ease-out will-change-transform"
             style={{

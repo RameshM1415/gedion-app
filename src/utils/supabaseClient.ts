@@ -552,43 +552,282 @@ export interface UserProfileData {
 }
 
 /**
+ * Upload profile avatar image directly to Supabase Storage.
+ * Attempts 'avatars' or 'profiles' bucket with seamless fallback to 'reels'.
+ * Returns public accessible URL.
+ */
+export async function uploadProfileAvatarToSupabase(
+  file: File | Blob,
+  userId?: string,
+  onProgress?: (percent: number) => void
+): Promise<string> {
+  const mime = file.type || 'image/jpeg';
+  let ext = 'jpg';
+  if (mime.includes('png')) ext = 'png';
+  else if (mime.includes('webp')) ext = 'webp';
+  else if (mime.includes('gif')) ext = 'gif';
+  else if ('name' in file && typeof (file as File).name === 'string') {
+    const parts = (file as File).name.split('.');
+    if (parts.length > 1) ext = parts.pop() || ext;
+  }
+
+  const safeUserId = (userId || 'user').replace(/[^a-zA-Z0-9_-]/g, '');
+  const fileName = `avatar_${safeUserId}_${Date.now()}.${ext}`;
+  const filePath = `avatars/${fileName}`;
+
+  onProgress?.(25);
+
+  // Attempt upload to 'avatars' bucket, fallback to 'profiles', then 'reels'
+  const candidateBuckets = ['avatars', 'profiles', 'reels'];
+  let successfulBucket = '';
+  let uploadedPath = '';
+  let lastError: any = null;
+
+  for (const b of candidateBuckets) {
+    try {
+      const { data, error } = await supabase.storage.from(b).upload(`public/${filePath}`, file, {
+        contentType: mime,
+        upsert: true,
+      });
+      if (!error && data) {
+        successfulBucket = b;
+        uploadedPath = data.path;
+        break;
+      } else {
+        lastError = error;
+      }
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  if (!successfulBucket || !uploadedPath) {
+    throw new Error(lastError?.message || 'Failed to upload avatar to Supabase Storage');
+  }
+
+  onProgress?.(85);
+
+  const { data: publicUrlData } = supabase.storage.from(successfulBucket).getPublicUrl(uploadedPath);
+  if (!publicUrlData || !publicUrlData.publicUrl) {
+    throw new Error('Failed to retrieve avatar public URL from Supabase Storage');
+  }
+
+  onProgress?.(100);
+  return publicUrlData.publicUrl;
+}
+
+/**
+ * Direct Database Mutation (UPDATE `profiles` table in Supabase).
+ * Includes: full_name, username, bio, website, and avatar_url.
+ * Sanitizes username and gracefully handles duplicate username errors or schema variations.
+ */
+export async function updateSupabaseProfileRecord(
+  userId: string | undefined,
+  payload: {
+    name: string;
+    username: string;
+    bio: string;
+    website?: string;
+    avatarUrl: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const targetId = userId || 'default_user';
+    const cleanedUsername = payload.username
+      .replace(/^@+/, '')
+      .replace(/\s+/g, '')
+      .toLowerCase()
+      .trim() || 'creator';
+
+    const cleanedName = payload.name.trim() || 'Creator';
+    const cleanedBio = payload.bio.trim();
+    const cleanedWebsite = (payload.website || '').trim();
+    const avatarUrl = payload.avatarUrl;
+    const nowIso = new Date().toISOString();
+
+    // 1. Attempt explicit update with all requested fields
+    const fullPayload: Record<string, any> = {
+      full_name: cleanedName,
+      username: cleanedUsername,
+      bio: cleanedBio,
+      website: cleanedWebsite,
+      avatar_url: avatarUrl,
+      updated_at: nowIso,
+    };
+
+    let { data, error } = await supabase
+      .from('profiles')
+      .update(fullPayload)
+      .eq('id', targetId)
+      .select();
+
+    // Handle unique username constraint violation
+    if (error && (error.code === '23505' || /duplicate|unique/i.test(error.message))) {
+      return {
+        success: false,
+        error: `Username @${cleanedUsername} is already taken. Please choose another username.`,
+      };
+    }
+
+    // If columns like full_name or website don't exist in postgres schema cache, retry with active core columns
+    if (error && /column.*does not exist/i.test(error.message)) {
+      const corePayload: Record<string, any> = {
+        username: cleanedUsername,
+        handle: `@${cleanedUsername}`,
+        bio: cleanedBio,
+        avatar_url: avatarUrl,
+        updated_at: nowIso,
+      };
+
+      const retry = await supabase
+        .from('profiles')
+        .update(corePayload)
+        .eq('id', targetId)
+        .select();
+
+      data = retry.data;
+      error = retry.error;
+    }
+
+    // If 0 rows were updated by targetId, fallback to updating by username or default_user
+    if (!error && (!data || data.length === 0)) {
+      const fallbackPayload: Record<string, any> = {
+        username: cleanedUsername,
+        handle: `@${cleanedUsername}`,
+        bio: cleanedBio,
+        avatar_url: avatarUrl,
+        updated_at: nowIso,
+      };
+
+      const fallbackUpdate = await supabase
+        .from('profiles')
+        .update(fallbackPayload)
+        .or(`id.eq.default_user,username.eq.${cleanedUsername}`)
+        .select();
+
+      data = fallbackUpdate.data;
+      error = fallbackUpdate.error;
+    }
+
+    if (error) {
+      console.warn('Note on Supabase profiles update:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    // 2. Synchronize auth.users metadata if session user is active
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          full_name: cleanedName,
+          name: cleanedName,
+          username: cleanedUsername,
+          avatar_url: avatarUrl,
+          picture: avatarUrl,
+          website: cleanedWebsite,
+        },
+      });
+    } catch (authErr) {
+      console.warn('Note on Supabase auth metadata update:', authErr);
+    }
+
+    // 3. Update existing posts/reels authored by this user in background so changes reflect globally
+    try {
+      if (userId) {
+        supabase
+          .from('posts')
+          .update({
+            creator_name: cleanedName,
+            creator_avatar: avatarUrl,
+            username: cleanedUsername,
+          })
+          .eq('user_id', userId)
+          .then(
+            () => {},
+            () => {}
+          );
+      }
+    } catch {}
+
+    return { success: true };
+  } catch (err: any) {
+    console.warn('Exception updating profile in Supabase:', err);
+    return { success: false, error: err?.message || 'Failed to update profile' };
+  }
+}
+
+/**
  * Sync and persist user profile changes with Supabase `profiles` table
  */
 export async function syncProfileToSupabase(
   profile: UserProfileData,
   userId?: string
 ): Promise<boolean> {
+  const result = await updateSupabaseProfileRecord(userId, {
+    name: profile.name,
+    username: profile.username,
+    bio: profile.bio,
+    website: profile.link,
+    avatarUrl: profile.avatar,
+  });
+  return result.success;
+}
+
+/**
+ * Fetch the freshest profile record directly from the `profiles` table by current session ID or username.
+ * Guaranteed never to revert back to hardcoded strings on page refresh.
+ */
+export async function fetchFreshestSupabaseProfile(
+  userId?: string,
+  username?: string
+): Promise<Partial<UserProfileData> | null> {
   try {
-    const id = userId || profile.username;
-    if (!id) return false;
-    const nowIso = new Date().toISOString();
+    let row: any = null;
 
-    const { error } = await supabase
-      .from('profiles')
-      .upsert(
-        {
-          id,
-          username: profile.username,
-          full_name: profile.name,
-          name: profile.name,
-          bio: profile.bio,
-          avatar_url: profile.avatar,
-          avatar: profile.avatar,
-          website: profile.link,
-          link: profile.link,
-          updated_at: nowIso,
-        },
-        { onConflict: 'username' }
-      );
-
-    if (error) {
-      console.warn('Note on Supabase profile sync:', error.message);
-      return false;
+    // 1. Prioritize querying by authenticated session user ID
+    if (userId) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (data) row = data;
     }
-    return true;
+
+    // 2. Fallback query by username
+    if (!row && username) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .maybeSingle();
+      if (data) row = data;
+    }
+
+    // 3. Fallback query for default_user row
+    if (!row) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', 'default_user')
+        .maybeSingle();
+      if (data) row = data;
+    }
+
+    if (!row) return null;
+
+    const rawHandle = row.handle ? String(row.handle).replace(/^@+/, '') : '';
+    const cleanUsername = rawHandle || row.username || username || 'creator';
+
+    return {
+      name: row.full_name || row.name || row.username || 'Creator',
+      username: cleanUsername,
+      bio: row.bio || '',
+      link: row.website || row.link || '',
+      avatar: row.avatar_url || row.avatar || '',
+    };
   } catch (err) {
-    console.warn('Exception syncing profile to Supabase:', err);
-    return false;
+    console.warn('Exception fetching freshest profile:', err);
+    return null;
   }
 }
 
@@ -598,29 +837,7 @@ export async function syncProfileToSupabase(
 export async function fetchSupabaseProfile(
   username: string
 ): Promise<Partial<UserProfileData> | null> {
-  try {
-    if (!username) return null;
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('username', username)
-      .maybeSingle();
-
-    if (error || !data) {
-      return null;
-    }
-
-    return {
-      name: data.full_name || data.name || username,
-      username: data.username || username,
-      bio: data.bio || '',
-      link: data.website || data.link || '',
-      avatar: data.avatar_url || data.avatar || '',
-    };
-  } catch (err) {
-    console.warn('Exception fetching profile from Supabase:', err);
-    return null;
-  }
+  return fetchFreshestSupabaseProfile(undefined, username);
 }
 
 /**
@@ -905,6 +1122,7 @@ export interface SearchedUser {
   avatar: string;
   bio?: string;
   isFollowing?: boolean;
+  isVerified?: boolean;
 }
 
 /**
@@ -918,30 +1136,60 @@ export async function searchSupabaseUsers(query: string): Promise<SearchedUser[]
     const results: SearchedUser[] = [];
     const seen = new Set<string>();
 
-    // 1. Query Supabase 'profiles' table
+    // 1. Query Supabase 'profiles' table filtering by username and full_name (ilike search)
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, full_name, name, avatar_url, avatar, bio')
-        .or(`username.ilike.%${clean}%,full_name.ilike.%${clean}%,name.ilike.%${clean}%`)
-        .limit(20);
+        .select('*')
+        .or(`username.ilike.%${clean}%,full_name.ilike.%${clean}%`)
+        .limit(25);
 
       if (!error && Array.isArray(data)) {
         for (const row of data) {
-          if (!row.username) continue;
-          const uLower = row.username.toLowerCase();
+          const uName = row.username || (row.handle ? String(row.handle).replace(/^@+/, '') : '');
+          if (!uName) continue;
+          const uLower = uName.toLowerCase();
           if (seen.has(uLower)) continue;
           seen.add(uLower);
           results.push({
-            id: String(row.id || row.username),
-            username: row.username,
-            name: row.full_name || row.name || row.username,
+            id: String(row.id || uName),
+            username: uName,
+            name: row.full_name || row.name || uName,
             avatar:
               row.avatar_url ||
               row.avatar ||
-              `https://api.dicebear.com/7.x/bottts/svg?seed=${row.username}&backgroundColor=06b6d4,a855f7`,
+              `https://api.dicebear.com/7.x/bottts/svg?seed=${uName}&backgroundColor=06b6d4,a855f7`,
             bio: row.bio || '',
+            isVerified: Boolean(row.is_verified || row.verified || row.isVerified),
           });
+        }
+      } else if (error) {
+        // Fallback in case full_name column name is not present
+        const { data: fallbackData } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('username', `%${clean}%`)
+          .limit(25);
+
+        if (Array.isArray(fallbackData)) {
+          for (const row of fallbackData) {
+            const uName = row.username || (row.handle ? String(row.handle).replace(/^@+/, '') : '');
+            if (!uName) continue;
+            const uLower = uName.toLowerCase();
+            if (seen.has(uLower)) continue;
+            seen.add(uLower);
+            results.push({
+              id: String(row.id || uName),
+              username: uName,
+              name: row.full_name || row.name || uName,
+              avatar:
+                row.avatar_url ||
+                row.avatar ||
+                `https://api.dicebear.com/7.x/bottts/svg?seed=${uName}&backgroundColor=06b6d4,a855f7`,
+              bio: row.bio || '',
+              isVerified: Boolean(row.is_verified || row.verified || row.isVerified),
+            });
+          }
         }
       }
     } catch (e) {
@@ -969,6 +1217,7 @@ export async function searchSupabaseUsers(query: string): Promise<SearchedUser[]
             avatar:
               p.creator_avatar ||
               `https://api.dicebear.com/7.x/bottts/svg?seed=${uName}&backgroundColor=06b6d4,a855f7`,
+            isVerified: false,
           });
         }
       }

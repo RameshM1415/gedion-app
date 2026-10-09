@@ -10,6 +10,7 @@ export interface AuthUser {
   displayName: string;
   username: string;
   avatar: string;
+  avatar_url?: string;
   provider: 'google' | 'email_otp' | 'supabase';
   createdAt: number;
   lastLoginAt: number;
@@ -25,6 +26,7 @@ export const DEFAULT_AUTH_USER: AuthUser = {
   displayName: 'Ramesh Rao',
   username: 'rameshrao034',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+  avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
   provider: 'google',
   createdAt: 1700000000000,
   lastLoginAt: Date.now(),
@@ -69,6 +71,7 @@ export const mapSupabaseUserToAuthUser = (sbUser: any): AuthUser => {
     displayName: formattedName,
     username: cleanUsername,
     avatar,
+    avatar_url: avatar,
     provider: sbUser.app_metadata?.provider === 'google' ? 'google' : 'supabase',
     createdAt: new Date(sbUser.created_at || Date.now()).getTime(),
     lastLoginAt: Date.now(),
@@ -100,6 +103,19 @@ export const setStoredAuth = (user: AuthUser): void => {
   } catch (e) {
     console.error('Failed to save gedion_auth session', e);
   }
+};
+
+/**
+ * Update active session with partial profile attributes and persist
+ */
+export const updateStoredAuthProfile = (updates: Partial<AuthUser>): AuthUser => {
+  const current = getStoredAuth() || DEFAULT_AUTH_USER;
+  const updated: AuthUser = {
+    ...current,
+    ...updates,
+  };
+  setStoredAuth(updated);
+  return updated;
 };
 
 /**

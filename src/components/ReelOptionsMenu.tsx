@@ -6,14 +6,12 @@ import {
   Copy,
   ShieldAlert,
   X,
-  AlertTriangle,
   Loader2,
   Check,
 } from 'lucide-react';
 import { Reel } from '../types';
 import { deleteReelFromSupabase, isReelOwnedByUser } from '../utils/supabaseClient';
 import { getStoredAuth, DEFAULT_AUTH_USER } from '../utils/authStorage';
-import { useTheme } from '../context/ThemeContext';
 
 export interface ReelOptionsMenuProps {
   isOpen: boolean;
@@ -36,7 +34,6 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
   onOpenShare,
   onShowToast,
 }) => {
-  const { isDark } = useTheme();
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -87,7 +84,7 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
         onDeleteReel(reelId);
       }
 
-      // 2. Broadcast global reel-deleted event so ProfileScreen and other views sync immediately
+      // 2. Broadcast global reel-deleted event
       window.dispatchEvent(
         new CustomEvent('reel-deleted', {
           detail: { reelId },
@@ -99,11 +96,11 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
         onShowToast('Reel deleted successfully');
       }
 
-      // 4. Close the modal right away for smooth, lag-free UI
+      // 4. Close modal
       onClose();
       setShowConfirmDelete(false);
 
-      // 5. Delete in background from Supabase posts and reels tables
+      // 5. Delete in background from Supabase
       await deleteReelFromSupabase(reelId);
     } catch (err) {
       console.warn('Error during reel deletion:', err);
@@ -114,7 +111,7 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center">
+      <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center select-none">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -126,20 +123,20 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
               onClose();
             }
           }}
-          className="absolute inset-0 bg-black/75 backdrop-blur-sm cursor-pointer"
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"
         />
 
-        {/* Modal Sheet - Sleek Instagram Dark Mode Container (#1c1c1e) */}
+        {/* Modal Sheet */}
         <motion.div
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-          className="relative w-full max-w-sm sm:max-w-md mx-auto rounded-t-3xl sm:rounded-3xl border-t sm:border border-neutral-800 bg-[#1c1c1e] text-white p-5 shadow-2xl z-10 overflow-hidden select-none"
+          className="relative w-full max-w-sm sm:max-w-md mx-auto rounded-t-3xl sm:rounded-3xl border-t sm:border border-neutral-800 bg-[#18181b] text-white p-5 shadow-2xl z-10 overflow-hidden"
         >
-          {/* Top handle bar: Muted centered pill (bg-neutral-600 w-10 h-1.5 rounded-full my-2) */}
+          {/* Top handle bar */}
           <div className="flex justify-center -mt-2 pb-2">
-            <div className="bg-neutral-600 w-10 h-1.5 rounded-full my-2" />
+            <div className="bg-neutral-600 w-10 h-1 rounded-full my-2 mx-auto" />
           </div>
 
           {!showConfirmDelete ? (
@@ -151,7 +148,7 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
                   {reel.poster ? (
                     <img
                       src={reel.poster}
-                      alt={reel.caption || 'Reel'}
+                      alt=""
                       className="h-full w-full object-cover"
                     />
                   ) : reel.videoUrl ? (
@@ -178,37 +175,37 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-neutral-400 truncate mt-0.5">
+                  <p className="text-xs truncate mt-0.5 text-neutral-400">
                     {reel.caption || 'Untitled reel'}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1.5 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                  className="p-1.5 rounded-full transition-colors cursor-pointer hover:bg-neutral-800 text-neutral-400 hover:text-white"
                 >
                   <X size={16} />
                 </button>
               </div>
 
               {/* ACTION ITEMS */}
-              <div className="flex flex-col gap-2 py-1">
-                {/* 1. OWN REEL: Prominent Danger Red Delete Option (#ef4444) */}
+              <div className="flex flex-col gap-1 py-1">
+                {/* 1. OWN REEL: Clean Red Delete Option */}
                 {isOwn && (
                   <button
                     type="button"
                     onClick={() => setShowConfirmDelete(true)}
-                    className="flex items-center justify-between w-full p-3.5 rounded-2xl bg-[#ef4444]/10 hover:bg-[#ef4444]/15 border border-[#ef4444]/25 text-[#ef4444] transition-all group active:scale-[0.98] cursor-pointer"
+                    className="flex items-center justify-between w-full p-3.5 rounded-2xl text-red-500 hover:bg-neutral-800/50 transition-all active:scale-[0.98] cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-[#ef4444]/15 text-[#ef4444] group-hover:scale-110 transition-transform">
+                      <div className="p-2 rounded-xl text-red-500">
                         <Trash2 size={18} />
                       </div>
                       <div className="flex flex-col items-start text-left">
-                        <span className="text-sm font-semibold text-[#ef4444]">
+                        <span className="text-sm font-semibold text-red-500">
                           Delete Reel
                         </span>
-                        <span className="text-[11px] text-[#ef4444]/75">
+                        <span className="text-[11px] text-neutral-400">
                           Permanently remove from your profile & feed
                         </span>
                       </div>
@@ -216,7 +213,7 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
                   </button>
                 )}
 
-                {/* 2. NOT OWN REEL: Report option with clean white text */}
+                {/* 2. NOT OWN REEL: Report option */}
                 {!isOwn && (
                   <button
                     type="button"
@@ -224,10 +221,10 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
                       onClose();
                       onOpenReport?.(reel);
                     }}
-                    className="flex items-center justify-between w-full p-3.5 rounded-2xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-800 text-white transition-all active:scale-[0.98] cursor-pointer"
+                    className="flex items-center justify-between w-full p-3.5 rounded-2xl text-white hover:bg-neutral-800/50 transition-all active:scale-[0.98] cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400">
+                      <div className="p-2 rounded-xl text-amber-500">
                         <ShieldAlert size={18} />
                       </div>
                       <div className="flex flex-col items-start text-left">
@@ -242,17 +239,17 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
                   </button>
                 )}
 
-                {/* 3. Share Reel: Clean white text with native SVG icon */}
+                {/* 3. Share Reel */}
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
                     onOpenShare?.(reel);
                   }}
-                  className="flex items-center justify-between w-full p-3.5 rounded-2xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-800 text-white transition-all active:scale-[0.98] cursor-pointer"
+                  className="flex items-center justify-between w-full p-3.5 rounded-2xl text-white hover:bg-neutral-800/50 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-[#0095f6]/15 text-[#0095f6]">
+                    <div className="p-2 rounded-xl text-neutral-200">
                       <Share2 size={18} />
                     </div>
                     <div className="flex flex-col items-start text-left">
@@ -266,14 +263,14 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
                   </div>
                 </button>
 
-                {/* 4. Copy Link: Clean white text with native SVG icon */}
+                {/* 4. Copy Link */}
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="flex items-center justify-between w-full p-3.5 rounded-2xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-800 text-white transition-all active:scale-[0.98] cursor-pointer"
+                  className="flex items-center justify-between w-full p-3.5 rounded-2xl text-white hover:bg-neutral-800/50 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-purple-500/15 text-purple-400">
+                    <div className="p-2 rounded-xl text-neutral-200">
                       {copied ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} />}
                     </div>
                     <div className="flex flex-col items-start text-left">
@@ -292,44 +289,41 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full mt-2 py-3 rounded-2xl font-semibold text-xs bg-neutral-800/90 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                className="w-full mt-2 py-3 rounded-2xl font-semibold text-xs bg-neutral-800 text-neutral-200 active:bg-neutral-700 hover:text-white transition-colors cursor-pointer"
               >
                 Cancel
               </button>
             </div>
           ) : (
-            /* ================= VIEW 2: SLEEK CONFIRMATION MODAL ================= */
+            /* ================= VIEW 2: CONFIRMATION MODAL ================= */
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="flex flex-col items-center text-center py-2 text-white"
+              className="flex flex-col items-center text-center py-2"
             >
               {/* Alert icon */}
-              <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#ef4444]/15 border border-[#ef4444]/30">
-                <Trash2 size={28} className="text-[#ef4444]" />
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#ef4444] text-[10px] text-white font-extrabold">
-                  !
-                </span>
+              <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-800/80 border border-neutral-700">
+                <Trash2 size={28} className="text-red-500" />
               </div>
 
-              {/* Title: "Delete Reel?" */}
+              {/* Title */}
               <h3 className="text-lg font-bold tracking-tight text-white">
                 Delete Reel?
               </h3>
 
               {/* Description */}
-              <p className="text-xs text-neutral-400 mt-2 max-w-xs leading-relaxed">
+              <p className="text-xs mt-2 max-w-xs leading-relaxed text-neutral-400">
                 Are you sure you want to permanently delete this reel? This action cannot be undone.
               </p>
 
-              {/* Actions: [ Cancel ] and [ Delete Reel ] */}
+              {/* Actions */}
               <div className="flex items-center gap-3 w-full mt-6">
                 <button
                   type="button"
                   onClick={() => setShowConfirmDelete(false)}
                   disabled={isDeleting}
-                  className="flex-1 py-3 px-4 rounded-xl font-semibold text-xs bg-neutral-800 hover:bg-neutral-700 text-white transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  className="flex-1 py-3 px-4 rounded-2xl font-semibold text-xs bg-neutral-800 text-neutral-200 hover:bg-neutral-700 active:bg-neutral-700 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -338,7 +332,7 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
                   type="button"
                   onClick={handleConfirmDelete}
                   disabled={isDeleting}
-                  className="flex-1 py-3 px-4 rounded-xl bg-[#ef4444] hover:bg-red-600 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                  className="flex-1 py-3 px-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   {isDeleting ? (
                     <>
@@ -360,3 +354,4 @@ export const ReelOptionsMenu: React.FC<ReelOptionsMenuProps> = ({
     </AnimatePresence>
   );
 };
+

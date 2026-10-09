@@ -347,7 +347,8 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
           stories={stories}
           onOpenYourStory={onOpenYourStory}
           onSelectStory={onSelectStory}
-          userAvatar={currentUser?.avatar}
+          currentUser={currentUser}
+          userAvatar={currentUser?.avatar_url || currentUser?.avatar}
           hasUserStory={hasUserStory}
         />
       </div>

@@ -208,7 +208,7 @@ export const CommentDrawer: React.FC<CommentDrawerProps> = ({
                   <div key={comment.id} className="flex items-start justify-between gap-3 group">
                     <img
                       src={comment.avatar}
-                      alt={comment.username}
+                      alt=""
                       className="h-9 w-9 rounded-full object-cover border border-white/15 shrink-0 shadow-sm"
                     />
                     <div className="flex-1 min-w-0">
@@ -279,7 +279,7 @@ export const CommentDrawer: React.FC<CommentDrawerProps> = ({
                       currentUser?.avatar ||
                       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
                     }
-                    alt={currentUser?.username || 'You'}
+                    alt=""
                     className="h-full w-full rounded-full object-cover"
                   />
                 </div>

@@ -48,6 +48,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isSoundAlerts, setIsSoundAlerts] = useState(true);
   const [isDataSaver, setIsDataSaver] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [hasAvatarError, setHasAvatarError] = useState(false);
 
   if (!isOpen) return null;
 
@@ -187,11 +188,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             {/* User Profile Card */}
             <div className="flex items-center gap-3">
-              <img
-                src={user.avatar}
-                alt={user.displayName}
-                className="h-12 w-12 rounded-full object-cover border border-zinc-500/30 shrink-0"
-              />
+              {user.avatar && !hasAvatarError ? (
+                <img
+                  src={user.avatar}
+                  alt=""
+                  onError={() => setHasAvatarError(true)}
+                  className="h-12 w-12 rounded-full object-cover border border-zinc-500/30 shrink-0"
+                />
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white font-bold text-lg shrink-0 select-none">
+                  {(user.displayName || user.username || 'U').charAt(0).toUpperCase()}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <p className="text-sm font-bold truncate">{user.displayName}</p>
@@ -440,6 +448,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <LogOut size={16} />
             <span>Log Out of GediOn</span>
           </button>
+        </div>
+
+        {/* Footer Branding */}
+        <div className="pt-4 pb-2 flex flex-col items-center justify-center gap-1 text-center select-none opacity-50">
+          <p className="text-xs font-semibold">GediOn</p>
+          <p className="text-[11px] text-zinc-500">v1.0.0 • Ultra-Smooth Short Video Experience</p>
         </div>
       </div>
 

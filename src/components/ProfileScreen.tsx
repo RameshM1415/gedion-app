@@ -37,6 +37,7 @@ import { CreatorInsightsModal } from './CreatorInsightsModal';
 import { WalletScreen } from './WalletScreen';
 import { ReelOptionsMenu } from './ReelOptionsMenu';
 import { FollowersModal } from './FollowersModal';
+import { EditProfileModal } from './EditProfileModal';
 import { AuthUser, DEFAULT_AUTH_USER, getStoredAuth } from '../utils/authStorage';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -45,6 +46,7 @@ import {
   SupabaseReelRow,
   syncProfileToSupabase,
   fetchSupabaseProfile,
+  fetchFreshestSupabaseProfile,
   fetchUserMetricsFromSupabase,
   fetchUserPostsFromSupabase,
   deleteReelFromSupabase,
@@ -138,7 +140,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   }, [currentUser]);
 
   const [activeProfileTab, setActiveProfileTab] = useState<'reels' | 'saved'>('reels');
+  const [hasAvatarError, setHasAvatarError] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  useEffect(() => {
+    setHasAvatarError(false);
+  }, [profile.avatar]);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
@@ -577,16 +584,27 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     let isMounted = true;
     const active = currentUser || getStoredAuth() || DEFAULT_AUTH_USER;
 
-    if (profile.username) {
-      fetchSupabaseProfile(profile.username).then((cloudData) => {
-        if (isMounted && cloudData) {
-          setProfile((prev) => ({
-            ...prev,
-            ...cloudData,
-          }));
-        }
-      });
-    }
+    // Fetch freshest profile directly from Supabase profiles table
+    fetchFreshestSupabaseProfile(active?.id, active?.username || profile.username).then((cloudData) => {
+      if (isMounted && cloudData) {
+        setProfile((prev) => {
+          const merged = { ...prev, ...cloudData };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+    });
+
+    // Listen to global profile change events
+    const handleProfileChanged = (e: Event) => {
+      const custom = e as CustomEvent<UserProfileData>;
+      if (custom.detail) {
+        setProfile((prev) => ({ ...prev, ...custom.detail }));
+      }
+    };
+    window.addEventListener('gedion-profile-changed', handleProfileChanged);
 
     // Fetch real followers, following, and likes counts from Supabase
     fetchUserMetricsFromSupabase(active?.id, active?.username || profile.username).then((metrics) => {
@@ -623,6 +641,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
     return () => {
       isMounted = false;
+      window.removeEventListener('gedion-profile-changed', handleProfileChanged);
     };
   }, [profile.username, currentUser, loadCreatorReels]);
 
@@ -711,17 +730,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     return () => window.removeEventListener('storage', handleWalletUpdate);
   }, []);
 
-  // Edit Modal Draft Form State
-  const [draftName, setDraftName] = useState(profile.name);
-  const [draftUsername, setDraftUsername] = useState(profile.username);
-  const [draftBio, setDraftBio] = useState(profile.bio);
-  const [draftLink, setDraftLink] = useState(profile.link);
-  const [draftGender, setDraftGender] = useState<UserProfileData['gender']>(profile.gender);
-  const [draftAvatar, setDraftAvatar] = useState(profile.avatar);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -734,61 +742,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       onOpenAuthModal?.('Sign in to customize your creator profile!');
       return;
     }
-    setDraftName(profile.name);
-    setDraftUsername(profile.username);
-    setDraftBio(profile.bio);
-    setDraftLink(profile.link);
-    setDraftGender(profile.gender);
-    setDraftAvatar(profile.avatar);
     setIsEditModalOpen(true);
   };
 
-  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const compressed = await compressImageFile(file, 400, 400, 0.85);
-      setDraftAvatar(compressed);
-    } catch (err) {
-      console.error('Error compressing profile picture:', err);
-    }
-    e.target.value = '';
-  };
-
-  const handleUsernameChange = (val: string) => {
-    const clean = val.replace(/^@+/, '').trim();
-    setDraftUsername(clean);
-  };
-
-  // 1. Sync and persist profile changes with Supabase `profiles` table
-  const handleSaveProfile = async () => {
-    const cleanedUsername = draftUsername.replace(/^@+/, '').trim() || 'user';
-    const updatedProfile: UserProfileData = {
-      name: draftName.trim() || 'Creator',
-      username: cleanedUsername,
-      bio: draftBio.trim(),
-      link: draftLink.trim(),
-      gender: draftGender,
-      avatar: draftAvatar,
-    };
-
-    setIsSavingProfile(true);
-    setProfile(updatedProfile);
-
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
-      window.dispatchEvent(new Event('profile-updated'));
-    } catch (err) {
-      console.error('Failed to save profile to localStorage:', err);
-    }
-
-    // Persist to Supabase `profiles` table
-    await syncProfileToSupabase(updatedProfile, currentUser?.id);
-    setIsSavingProfile(false);
-    setIsEditModalOpen(false);
-    showToast('Profile updated & synced to cloud! 🚀');
-  };
+  useEffect(() => {
+    onEditingChange?.(isEditModalOpen);
+  }, [isEditModalOpen, onEditingChange]);
 
   // Filter saved reels
   const savedReels = reels.filter((r) => r.isBookmarked || savedReelIds.includes(r.id));
@@ -949,13 +908,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Circular avatar with Instagram gradient ring and Camera badge */}
         <div className="relative">
           <div className="h-24 w-24 rounded-full p-[2.5px] bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888]">
-            <img
-              src={profile.avatar}
-              alt="Creator avatar"
-              className={`h-full w-full rounded-full object-cover border-2 ${
-                isDark ? 'border-black' : 'border-white'
-              }`}
-            />
+            {profile.avatar && !hasAvatarError ? (
+              <img
+                src={profile.avatar}
+                alt=""
+                onError={() => setHasAvatarError(true)}
+                className={`h-full w-full rounded-full object-cover border-2 ${
+                  isDark ? 'border-black' : 'border-white'
+                }`}
+              />
+            ) : (
+              <div
+                className={`h-full w-full rounded-full flex items-center justify-center text-white font-black text-3xl border-2 select-none ${
+                  isDark ? 'border-black' : 'border-white'
+                } bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888]`}
+              >
+                {(profile.name || profile.username || 'C').charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
 
           {/* "Edit / Camera" Badge Button */}
@@ -1207,7 +1177,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     {reel.poster ? (
                       <img
                         src={reel.poster}
-                        alt={reel.caption || 'Creator Reel'}
+                        alt=""
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         loading="lazy"
                       />
@@ -1306,7 +1276,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     {reel.poster ? (
                       <img
                         src={reel.poster}
-                        alt={reel.caption}
+                        alt=""
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : reel.videoUrl ? (
@@ -1476,154 +1446,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       </AnimatePresence>
 
       {/* ============================================================ */}
-      {/* 1. "EDIT PROFILE" SLIDING BOTTOM MODAL & SUPABASE SYNC       */}
+      {/* 1. "EDIT PROFILE" MODAL & SUPABASE LIFECYCLE                  */}
       {/* ============================================================ */}
-      <AnimatePresence>
-        {isEditModalOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsEditModalOpen(false)}
-              className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-              className="fixed bottom-0 inset-x-0 z-[75] flex flex-col h-[82vh] max-h-[82vh] rounded-t-3xl bg-[#090912]/98 backdrop-blur-2xl border-t border-white/15 shadow-[0_-20px_50px_rgba(0,0,0,0.95)] overflow-hidden text-white"
-            >
-              {/* Drag Handle */}
-              <div className="flex justify-center pt-2.5 pb-1 shrink-0">
-                <div className="h-1.5 w-11 rounded-full bg-white/30" />
-              </div>
-
-              {/* Modal Navigation Header */}
-              <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="text-xs font-semibold text-white/60 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <h3 className="font-extrabold text-sm text-white">Edit Profile</h3>
-                <button
-                  type="button"
-                  onClick={handleSaveProfile}
-                  disabled={isSavingProfile}
-                  className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-extrabold text-xs shadow-[0_0_12px_rgba(6,182,212,0.7)] active:scale-95 transition-all flex items-center gap-1"
-                >
-                  {isSavingProfile ? (
-                    <Loader2 size={13} className="animate-spin text-black" />
-                  ) : (
-                    <Check size={13} strokeWidth={3} />
-                  )}
-                  <span>Save</span>
-                </button>
-              </div>
-
-              {/* Form Content */}
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar pb-10">
-                {/* Avatar change with camera badge */}
-                <div className="flex flex-col items-center">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleAvatarFileChange}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="relative cursor-pointer group"
-                  >
-                    <div className="h-20 w-20 rounded-full p-[2px] bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-pink-500 shadow-[0_0_20px_rgba(6,182,212,0.5)]">
-                      <img
-                        src={draftAvatar}
-                        alt="Avatar preview"
-                        className="h-full w-full rounded-full object-cover border-2 border-black"
-                      />
-                    </div>
-                    <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Camera size={20} className="text-white drop-shadow" />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-2 text-xs font-bold text-cyan-300 hover:text-cyan-200"
-                  >
-                    Change Profile Photo
-                  </button>
-                </div>
-
-                {/* Display Name */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-white/60">Display Name</label>
-                  <input
-                    type="text"
-                    value={draftName}
-                    onChange={(e) => setDraftName(e.target.value)}
-                    placeholder="Your creator name"
-                    className="w-full rounded-xl bg-white/[0.06] border border-white/10 px-3.5 py-2.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-cyan-400 transition-colors"
-                  />
-                </div>
-
-                {/* Username */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-white/60">Handle / Username</label>
-                  <div className="flex items-center rounded-xl bg-white/[0.06] border border-white/10 px-3.5 py-2.5 focus-within:border-cyan-400 transition-colors">
-                    <span className="text-xs font-bold text-cyan-400 mr-1 select-none">@</span>
-                    <input
-                      type="text"
-                      value={draftUsername}
-                      onChange={(e) => handleUsernameChange(e.target.value)}
-                      placeholder="username"
-                      className="w-full bg-transparent text-xs text-white placeholder-white/30 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Bio text */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-white/60">Bio</label>
-                    <span className={`text-[10px] ${draftBio.length > 150 ? 'text-pink-400' : 'text-white/40'}`}>
-                      {draftBio.length} / 150
-                    </span>
-                  </div>
-                  <textarea
-                    rows={3}
-                    maxLength={150}
-                    value={draftBio}
-                    onChange={(e) => setDraftBio(e.target.value)}
-                    placeholder="Tell your fans about your craft, aesthetic, or beats..."
-                    className="w-full rounded-xl bg-white/[0.06] border border-white/10 px-3.5 py-2.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-cyan-400 transition-colors resize-none"
-                  />
-                </div>
-
-                {/* Link */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-white/60">Website / Link</label>
-                  <div className="flex items-center rounded-xl bg-white/[0.06] border border-white/10 px-3.5 py-2.5 focus-within:border-cyan-400 transition-colors">
-                    <LinkIcon size={14} className="text-white/40 mr-2 shrink-0" />
-                    <input
-                      type="url"
-                      value={draftLink}
-                      onChange={(e) => setDraftLink(e.target.value)}
-                      placeholder="https://gedion.app/@creator"
-                      className="w-full bg-transparent text-xs text-white placeholder-white/30 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        currentUser={currentUser}
+        profile={profile}
+        onSaveSuccess={(updated) => {
+          setProfile(updated);
+          setIsEditModalOpen(false);
+        }}
+        onShowToast={showToast}
+      />
 
       {/* Settings Modal */}
       <AnimatePresence>

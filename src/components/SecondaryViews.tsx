@@ -12,7 +12,8 @@ export interface ViewProps {
 }
 
 // 1. EXPLORE & SEARCH VIEW
-export { ExploreView } from './ExploreView';
+export { SearchView, ExploreView } from './SearchView';
+export type { SearchViewProps, ExploreViewProps } from './SearchView';
 
 // 2. CREATE / RECORD VIEW (Now modularized in RecordingView.tsx)
 export { RecordingView, CreateView } from './RecordingView';

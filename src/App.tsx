@@ -23,7 +23,13 @@ import { OnboardingVideoModal } from './components/OnboardingVideoModal';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { VideoUploadModal } from './components/VideoUploadModal';
 import { CreatePostModal } from './components/CreatePostModal';
-import { supabase, fetchSupabaseReels, deleteReelFromSupabase, updateReelLikesInSupabase } from './utils/supabaseClient';
+import {
+  supabase,
+  fetchSupabaseReels,
+  deleteReelFromSupabase,
+  updateReelLikesInSupabase,
+  fetchFreshestSupabaseProfile,
+} from './utils/supabaseClient';
 import { InstagramFeed } from './components/InstagramFeed';
 import { ReelsHeader } from './components/ReelsHeader';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -138,33 +144,128 @@ export const App: React.FC = () => {
     setTimeout(() => setStoryToast(null), 3500);
   };
 
-  // 2. Auth State Listener on App Launch
+  // 2. Auth State Listener & Profile Synchronization on App Launch
   useEffect(() => {
-    // Check active session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Check active session on mount and load freshest profile from Supabase
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         const authUser = mapSupabaseUserToAuthUser(session.user);
-        setCurrentUser(authUser);
-        setStoredAuth(authUser);
+        const cloudProfile = await fetchFreshestSupabaseProfile(session.user.id, authUser.username);
+        const mergedUser: AuthUser = {
+          ...authUser,
+          displayName: cloudProfile?.name || authUser.displayName,
+          username: cloudProfile?.username || authUser.username,
+          avatar: cloudProfile?.avatar || authUser.avatar,
+        };
+        setCurrentUser(mergedUser);
+        setStoredAuth(mergedUser);
+
+        if (cloudProfile) {
+          try {
+            localStorage.setItem(
+              'gedion_user_profile_v1',
+              JSON.stringify({
+                name: mergedUser.displayName,
+                username: mergedUser.username,
+                bio: cloudProfile.bio || '',
+                link: cloudProfile.link || '',
+                gender: 'Prefer not to say',
+                avatar: mergedUser.avatar,
+              })
+            );
+          } catch {}
+        }
+      } else {
+        // Even for guest/local user, fetch freshest record from profiles table
+        const local = getStoredAuth() || DEFAULT_AUTH_USER;
+        const cloudProfile = await fetchFreshestSupabaseProfile(local?.id, local?.username);
+        if (cloudProfile) {
+          const mergedUser: AuthUser = {
+            ...local,
+            displayName: cloudProfile.name || local.displayName,
+            username: cloudProfile.username || local.username,
+            avatar: cloudProfile.avatar || local.avatar,
+          };
+          setCurrentUser(mergedUser);
+          setStoredAuth(mergedUser);
+          try {
+            localStorage.setItem(
+              'gedion_user_profile_v1',
+              JSON.stringify({
+                name: mergedUser.displayName,
+                username: mergedUser.username,
+                bio: cloudProfile.bio || '',
+                link: cloudProfile.link || '',
+                gender: 'Prefer not to say',
+                avatar: mergedUser.avatar,
+              })
+            );
+          } catch {}
+        }
       }
     });
 
     // Listen to real-time auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const authUser = mapSupabaseUserToAuthUser(session.user);
-        setCurrentUser(authUser);
-        setStoredAuth(authUser);
+        const cloudProfile = await fetchFreshestSupabaseProfile(session.user.id, authUser.username);
+        const mergedUser: AuthUser = {
+          ...authUser,
+          displayName: cloudProfile?.name || authUser.displayName,
+          username: cloudProfile?.username || authUser.username,
+          avatar: cloudProfile?.avatar || authUser.avatar,
+        };
+        setCurrentUser(mergedUser);
+        setStoredAuth(mergedUser);
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null);
         clearStoredAuth();
       }
     });
 
+    // Listen to global profile update events
+    const handleProfileUpdate = (e: Event) => {
+      const custom = e as CustomEvent<any>;
+      const detail = custom.detail;
+      if (detail) {
+        setCurrentUser((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            displayName: detail.name || prev.displayName,
+            username: detail.username || prev.username,
+            avatar: detail.avatar || prev.avatar,
+          };
+        });
+
+        // Also update any authored reels in memory so changes reflect immediately
+        setReels((prev) =>
+          prev.map((r) => {
+            const isAuthor =
+              (currentUser?.id && r.userId === currentUser.id) ||
+              (currentUser?.username && r.username === currentUser.username) ||
+              (detail.username && r.username === detail.username);
+            if (isAuthor) {
+              return {
+                ...r,
+                displayName: detail.name || r.displayName,
+                username: detail.username || r.username,
+                avatar: detail.avatar || r.avatar,
+              };
+            }
+            return r;
+          })
+        );
+      }
+    };
+    window.addEventListener('gedion-profile-changed', handleProfileUpdate);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('gedion-profile-changed', handleProfileUpdate);
     };
   }, []);
 
@@ -1002,6 +1103,8 @@ export const App: React.FC = () => {
           hasUnreadMessages={false}
           hasUnreadNotifications={false}
           isVisible={!isSheetOpen && !isCreateOpen && !isEditProfileOpen}
+          currentUser={currentUser}
+          userAvatar={currentUser?.avatar}
         />
       </main>
 

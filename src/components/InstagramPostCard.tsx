@@ -204,7 +204,7 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
                   reel.avatar ||
                   `https://api.dicebear.com/7.x/bottts/svg?seed=${reel.username}&backgroundColor=06b6d4,a855f7`
                 }
-                alt={reel.displayName || reel.username}
+                alt=""
                 className="w-8 h-8 rounded-full object-cover"
                 loading="lazy"
               />
@@ -306,7 +306,7 @@ export const InstagramPostCard: React.FC<InstagramPostCardProps> = ({
         ) : (
           <img
             src={mediaUrl}
-            alt={reel.caption || 'Instagram Post'}
+            alt=""
             className={`w-full h-full object-cover transition-opacity duration-300 ${
               mediaLoaded ? 'opacity-100' : 'opacity-0'
             }`}

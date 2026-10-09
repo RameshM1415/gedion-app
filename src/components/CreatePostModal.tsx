@@ -537,7 +537,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 {mediaType === 'image' && previewUrl ? (
                   <img
                     src={previewUrl}
-                    alt="Preview"
+                    alt=""
                     className={`w-full h-full transition-all duration-200 ${
                       aspectRatioMode === 'contain' ? 'object-contain' : 'object-cover'
                     }`}
@@ -628,7 +628,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 <div className="flex items-center gap-3">
                   <img
                     src={activeUser.avatar}
-                    alt={activeUser.displayName}
+                    alt=""
                     className="w-9 h-9 rounded-full object-cover ring-1 ring-neutral-200 dark:ring-neutral-800"
                   />
                   <div className="flex flex-col">

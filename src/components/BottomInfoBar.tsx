@@ -38,7 +38,7 @@ export const BottomInfoBar: React.FC<BottomInfoBarProps> = ({
               reel.avatar ||
               `https://api.dicebear.com/7.x/bottts/svg?seed=${reel.username}&backgroundColor=06b6d4,a855f7`
             }
-            alt={reel.displayName || reel.username}
+            alt=""
             className="w-8 h-8 rounded-full object-cover border-[1.5px] border-black"
           />
         </button>

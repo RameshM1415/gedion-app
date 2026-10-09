@@ -222,7 +222,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                   <div className="relative p-[1.5px] rounded-full bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888] shrink-0">
                     <img
                       src={notif.actorAvatar}
-                      alt={notif.actorUsername}
+                      alt=""
                       className="w-11 h-11 rounded-full object-cover border-[1.5px] border-black"
                     />
                   </div>

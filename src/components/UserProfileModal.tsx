@@ -438,7 +438,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <div className="p-[2px] rounded-full bg-black">
                   <img
                     src={avatar}
-                    alt={displayName}
+                    alt=""
                     className="w-[76px] h-[76px] rounded-full object-cover"
                   />
                 </div>
@@ -588,7 +588,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   {item.poster ? (
                     <img
                       src={item.poster}
-                      alt={item.caption || 'Reel thumbnail'}
+                      alt=""
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : item.videoUrl ? (

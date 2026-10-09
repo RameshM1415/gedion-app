@@ -170,7 +170,7 @@ export const StoryPreviewModal: React.FC<StoryPreviewModalProps> = ({
             ) : (
               <img
                 src={currentStory.storyMediaUrl}
-                alt={`${currentStory.username}'s story`}
+                alt=""
                 className="h-full w-full object-cover select-none pointer-events-none"
               />
             )}
@@ -234,7 +234,7 @@ export const StoryPreviewModal: React.FC<StoryPreviewModalProps> = ({
                 <div className="relative h-9 w-9 rounded-full p-[1.5px] bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888]">
                   <img
                     src={currentStory.avatar}
-                    alt={currentStory.username}
+                    alt=""
                     className="h-full w-full rounded-full object-cover border border-black"
                   />
                 </div>

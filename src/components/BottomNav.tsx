@@ -260,7 +260,23 @@ interface BottomNavProps {
   hasUnreadMessages?: boolean;
   hasUnreadNotifications?: boolean;
   isVisible?: boolean;
+  userAvatar?: string | null;
+  currentUser?: any;
 }
+
+// Helper to determine if an avatar string is a valid non-empty URL
+const isValidUrl = (url: unknown): url is string => {
+  if (typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return false;
+  return (
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('./')
+  );
+};
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
@@ -273,11 +289,45 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   hasUnreadMessages = false,
   hasUnreadNotifications = false,
   isVisible = true,
+  userAvatar: propAvatar,
+  currentUser,
 }) => {
   const { isDark } = useTheme();
-  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(
+    propAvatar || currentUser?.avatar_url || currentUser?.avatar || null
+  );
+  const [hasAvatarImgError, setHasAvatarImgError] = useState(false);
   const [isDoubleTapSpinning, setIsDoubleTapSpinning] = useState(false);
   const [isReelsDoubleTapSpinning, setIsReelsDoubleTapSpinning] = useState(false);
+
+  // Candidate avatar resolution
+  const candidateAvatar =
+    propAvatar ||
+    currentUser?.avatar_url ||
+    currentUser?.avatar ||
+    userAvatar;
+
+  // Reset error state when avatar changes
+  useEffect(() => {
+    setHasAvatarImgError(false);
+  }, [candidateAvatar]);
+
+  const isValidAvatar = isValidUrl(candidateAvatar);
+
+  const userInitial = (
+    currentUser?.displayName?.trim() ||
+    currentUser?.username?.trim() ||
+    'P'
+  )
+    .charAt(0)
+    .toUpperCase();
+
+  // Synchronize avatar from props
+  useEffect(() => {
+    if (propAvatar) setUserAvatar(propAvatar);
+    else if (currentUser?.avatar_url) setUserAvatar(currentUser.avatar_url);
+    else if (currentUser?.avatar) setUserAvatar(currentUser.avatar);
+  }, [propAvatar, currentUser?.avatar_url, currentUser?.avatar]);
 
   // Timing references for high-precision double-tap detection
   const lastHomeTapRef = useRef<number>(0);
@@ -296,11 +346,21 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       } catch {}
     };
     updateAvatar();
+
+    const handleProfileChanged = (e: Event) => {
+      const custom = e as CustomEvent<any>;
+      if (custom.detail?.avatar) {
+        setUserAvatar(custom.detail.avatar);
+      }
+    };
+
     window.addEventListener('storage', updateAvatar);
     window.addEventListener('profile-updated', updateAvatar);
+    window.addEventListener('gedion-profile-changed', handleProfileChanged);
     return () => {
       window.removeEventListener('storage', updateAvatar);
       window.removeEventListener('profile-updated', updateAvatar);
+      window.removeEventListener('gedion-profile-changed', handleProfileChanged);
       if (singleTapTimerRef.current) {
         clearTimeout(singleTapTimerRef.current);
       }
@@ -530,12 +590,17 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               : 'opacity-95'
           }`}
         >
-          {userAvatar ? (
+          {isValidAvatar && !hasAvatarImgError ? (
             <img
-              src={userAvatar}
-              alt="Profile"
+              src={candidateAvatar}
+              alt=""
+              onError={() => setHasAvatarImgError(true)}
               className="w-full h-full object-cover select-none pointer-events-none"
             />
+          ) : userInitial ? (
+            <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white font-extrabold text-[11px] select-none shadow-inner">
+              {userInitial}
+            </div>
           ) : (
             <InstagramProfileIcon
               isActive={activeTab === 'profile'}
