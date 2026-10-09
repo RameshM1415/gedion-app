@@ -67,6 +67,7 @@ export interface Conversation {
   lastMessageTime: string;
   unreadCount: number;
   messages: ChatMessage[];
+  isRequest?: boolean;
 }
 
 export interface StoryItem {

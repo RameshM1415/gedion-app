@@ -1244,25 +1244,55 @@ export async function sendSupabaseMessage(msg: {
   mediaType?: string;
 }): Promise<boolean> {
   try {
-    const { error } = await supabase.from('messages').insert([
-      {
+    const fullPayload = {
+      conversation_id: msg.conversationId,
+      sender_id: msg.senderId,
+      recipient_id: msg.recipientId,
+      text: msg.text,
+      media_url: msg.mediaUrl,
+      media_type: msg.mediaType,
+      created_at: new Date().toISOString(),
+    };
+
+    let { error } = await supabase.from('messages').insert([fullPayload]);
+    if (error) {
+      // Fallback for minimal schema without optional media columns
+      const minimalPayload = {
         conversation_id: msg.conversationId,
         sender_id: msg.senderId,
-        recipient_id: msg.recipientId,
         text: msg.text,
-        media_url: msg.mediaUrl,
-        media_type: msg.mediaType,
         created_at: new Date().toISOString(),
-      },
-    ]);
-    if (error) {
-      console.warn('Supabase messages insert note:', error.message);
+      };
+      const retry = await supabase.from('messages').insert([minimalPayload]);
+      if (!retry.error) {
+        error = null;
+      }
     }
     return !error;
   } catch (err) {
     console.warn('Exception sending message to Supabase:', err);
     return false;
   }
+}
+
+/**
+ * Fetch messages for a specific conversation from Supabase 'messages' table
+ */
+export async function fetchSupabaseMessages(conversationId: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+
+    if (!error && Array.isArray(data)) {
+      return data;
+    }
+  } catch (err) {
+    console.warn('Exception fetching messages from Supabase:', err);
+  }
+  return [];
 }
 
 /**
