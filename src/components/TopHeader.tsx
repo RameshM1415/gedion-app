@@ -24,9 +24,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         className="flex items-center gap-1.5 w-28 shrink-0 pointer-events-auto cursor-pointer select-none active:scale-95 transition-all"
       >
         <img
-          src="https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png"
+          src="https://i.ibb.co/x8gy0Nv9/file-0000000099108230b949ac0a09fee334.png"
           alt="GediOn logo"
-          className="h-7 w-7 object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+          className="w-8 h-8 object-contain rounded-lg drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
         />
         <span
           className="font-sans font-black text-[22px] sm:text-[24px] tracking-[-0.04em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]"

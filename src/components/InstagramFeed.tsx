@@ -294,7 +294,7 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({
             className="flex items-center gap-1.5 cursor-pointer select-none active:scale-95 transition-all"
           >
             <img
-              src="https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png"
+              src="https://i.ibb.co/x8gy0Nv9/file-0000000099108230b949ac0a09fee334.png"
               alt="GediOn logo"
               className="h-7 w-7 object-contain drop-shadow-sm"
             />

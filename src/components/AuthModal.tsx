@@ -20,7 +20,6 @@ import {
   Check,
   User,
 } from 'lucide-react';
-import { GediOnLogoIcon } from './GediOnLogoIcon';
 import {
   AuthUser,
   setStoredAuth,
@@ -552,10 +551,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <>
               {/* Brand Header */}
               <div className="flex flex-col items-center text-center">
-                <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-cyan-400 via-sky-500 to-purple-600 p-[1.5px] shadow-[0_0_20px_rgba(6,182,212,0.7)] mb-2.5">
-                  <div className="h-full w-full rounded-[14px] bg-[#090912] flex items-center justify-center">
-                    <GediOnLogoIcon size={24} />
-                  </div>
+                {/* Circular Glow Container */}
+                <div className="mb-2 w-16 h-16 rounded-full border border-cyan-400/80 bg-black flex items-center justify-center p-2 shadow-[0_0_16px_rgba(6,182,212,0.6),inset_0_0_10px_rgba(6,182,212,0.3)]">
+                  <img
+                    src="https://i.ibb.co/x8gy0Nv9/file-0000000099108230b949ac0a09fee334.png"
+                    alt="GediOn"
+                    className="w-full h-full object-contain select-none pointer-events-none"
+                  />
                 </div>
 
                 <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-1.5">

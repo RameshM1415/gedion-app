@@ -477,7 +477,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full p-[2.5px] bg-gradient-to-tr from-[#fba73f] via-[#dc2743] to-[#0095f6] shadow-xl">
                   <div className="w-full h-full rounded-full overflow-hidden bg-black flex items-center justify-center">
                     <img
-                      src="https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png"
+                      src="https://i.ibb.co/x8gy0Nv9/file-0000000099108230b949ac0a09fee334.png"
                       alt="GediOn Official Logo"
                       className="w-full h-full object-contain object-center select-none pointer-events-none"
                     />

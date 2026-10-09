@@ -31,7 +31,7 @@ export const GediOnLogoIcon: React.FC<GediOnLogoIconProps> = ({
         <div className="relative h-full w-full rounded-[22%] overflow-hidden bg-[#06040a] flex items-center justify-center">
           {!imageError ? (
             <img
-              src="https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png"
+              src="https://i.ibb.co/x8gy0Nv9/file-0000000099108230b949ac0a09fee334.png"
               alt="GediOn Official Logo Badge"
               className="h-full w-full object-contain object-center transform scale-[1.01]"
               style={{

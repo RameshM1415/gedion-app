@@ -80,19 +80,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           className="relative flex items-center justify-center"
         >
           {/* Dimensional ambient color glow under 3D emblem */}
-          <div className="absolute -inset-3 rounded-[36px] bg-gradient-to-tr from-[#f59e0b]/25 via-[#ec4899]/20 to-[#8b5cf6]/25 blur-2xl opacity-75" />
+          <div className="absolute -inset-3 rounded-full bg-cyan-400/20 blur-2xl opacity-75" />
 
-          {/* 3D Visual Box with dimensional drop-shadows */}
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-[28px] p-[2.5px] bg-gradient-to-tr from-[#f59e0b] via-[#ec4899] to-[#8b5cf6] shadow-[0_20px_40px_rgba(0,0,0,0.12),0_8px_16px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
-            <div className="w-full h-full rounded-[25px] overflow-hidden bg-white flex items-center justify-center shadow-inner relative">
-              <img
-                src="https://i.postimg.cc/1XtyC1ff/file-000000007ca8820bb8633872f223383f.png"
-                alt="GediOn"
-                className="w-full h-full object-contain select-none pointer-events-none"
-              />
-              {/* Subtle glass highlight sheen */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/10 pointer-events-none" />
-            </div>
+          {/* Official 3D Logo Presentation */}
+          <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
+            <img
+              src="https://i.ibb.co/x8gy0Nv9/file-0000000099108230b949ac0a09fee334.png"
+              alt="GediOn"
+              className="w-20 h-20 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.15)] select-none pointer-events-none"
+            />
           </div>
         </motion.div>
 
