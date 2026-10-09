@@ -1037,10 +1037,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <button
             type="button"
             onClick={handleOpenEditModal}
-            className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-semibold active:scale-95 transition-all cursor-pointer ${
+            className={`flex-1 py-1.5 px-3 rounded-lg border text-xs active:scale-95 transition-all cursor-pointer ${
               isDark
-                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
-                : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-900'
+                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white font-semibold'
+                : 'bg-neutral-100/90 hover:bg-neutral-200 active:bg-neutral-200 border-neutral-300 text-neutral-900 font-medium'
             }`}
           >
             <span>Edit profile</span>
@@ -1048,10 +1048,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <button
             type="button"
             onClick={() => setIsShareModalOpen(true)}
-            className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-semibold active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-1.5 px-3 rounded-lg border text-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               isDark
-                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
-                : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-900'
+                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white font-semibold'
+                : 'bg-neutral-100/90 hover:bg-neutral-200 active:bg-neutral-200 border-neutral-300 text-neutral-900 font-medium'
             }`}
           >
             <Share2 size={13} />
@@ -1060,10 +1060,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <button
             type="button"
             onClick={() => setIsInsightsOpen(true)}
-            className={`py-1.5 px-3 rounded-lg border text-xs font-semibold active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
+            className={`py-1.5 px-3 rounded-lg border text-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
               isDark
-                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
-                : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-900'
+                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white font-semibold'
+                : 'bg-neutral-100/90 hover:bg-neutral-200 active:bg-neutral-200 border-neutral-300 text-neutral-900 font-medium'
             }`}
             title="Creator Insights & Analytics"
           >
@@ -1100,7 +1100,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </div>
             </div>
 
-            <div className={`flex items-center gap-1 text-xs font-semibold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+            <div className={`flex items-center gap-1 text-xs ${isDark ? 'text-white font-semibold' : 'text-neutral-900 font-semibold text-xs'}`}>
               <span>View ↗</span>
             </div>
           </button>

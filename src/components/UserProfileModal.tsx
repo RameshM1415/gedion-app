@@ -531,7 +531,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 ) : (
                   <>
                     <UserPlus size={14} />
-                    <span>Follow</span>
+                    <span>+ Follow</span>
                   </>
                 )}
               </button>
